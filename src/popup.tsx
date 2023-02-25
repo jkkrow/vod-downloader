@@ -1,21 +1,22 @@
-import { useState } from "react"
+import { sendToBackground } from '@plasmohq/messaging';
+import { useState } from 'react';
 
-function IndexPopup() {
-  const [data, setData] = useState("")
+export default function IndexPopup() {
+  const [data, setData] = useState<any>(null);
+
+  const sendMessageHandler = async () => {
+    const response = await sendToBackground({
+      name: 'test',
+      body: 'foobar',
+    });
+
+    setData(response.message);
+  };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        padding: 16
-      }}>
-      <h1>
-        Welcome to your <a href="https://www.plasmo.com">Plasmo</a> Extension!
-      </h1>
-      <input onChange={(e) => setData(e.target.value)} value={data} />
+    <div>
+      <button onClick={sendMessageHandler}>Send Message</button>
+      <div>{data}</div>
     </div>
-  )
+  );
 }
-
-export default IndexPopup
