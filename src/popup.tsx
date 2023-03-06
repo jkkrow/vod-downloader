@@ -1,22 +1,17 @@
 import { sendToBackground } from '@plasmohq/messaging';
-import { useState } from 'react';
+import { useStorage } from '@plasmohq/storage/hook';
 
 export default function IndexPopup() {
-  const [data, setData] = useState<any>(null);
+  const [testValue] = useStorage('testing');
 
   const sendMessageHandler = async () => {
-    const response = await sendToBackground({
-      name: 'test',
-      body: 'foobar',
-    });
-
-    setData(response.message);
+    sendToBackground({ name: 'test', body: Math.floor(Math.random() * 10) });
   };
 
   return (
     <div>
       <button onClick={sendMessageHandler}>Send Message</button>
-      <div>{data}</div>
+      <div>{testValue}</div>
     </div>
   );
 }

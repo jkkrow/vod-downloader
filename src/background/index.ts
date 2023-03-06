@@ -1,39 +1,9 @@
+import { updateHeaders } from '~lib/update-headers';
+import { parseHls } from '~lib/parse-hls';
+
 export {};
 
 const requestedManifestUrls = [];
-
-async function updateHeaders(headers: any[]) {
-  const requestHeaders = headers.map(({ name, value }) => ({
-    header: name,
-    operation: chrome.declarativeNetRequest.HeaderOperation.SET,
-    value,
-  }));
-
-  const rules: chrome.declarativeNetRequest.Rule[] = [
-    {
-      id: 1,
-      action: {
-        type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
-        requestHeaders,
-      },
-      condition: {
-        domains: [chrome.runtime.id],
-        urlFilter: '*',
-        resourceTypes: [
-          chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST,
-        ],
-      },
-    },
-  ];
-
-  const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
-  const existingRuleIds = existingRules.map((rule) => rule.id);
-
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: existingRuleIds,
-    addRules: rules,
-  });
-}
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
   ({ url, requestHeaders }) => {
@@ -44,7 +14,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
       updateHeaders(requestHeaders)
         .then(() => fetch(url, { cache: 'no-cache' }))
         .then((response) => response.text())
-        .then((data) => console.log(data));
+        .then((data) => parseHls(url, data))
+        .then((result) => console.log(result));
     }
   },
   { urls: ['<all_urls>'] },
