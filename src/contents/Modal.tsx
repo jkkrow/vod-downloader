@@ -1,11 +1,14 @@
 import type { PlasmoCSConfig } from 'plasmo';
 
 import Draggable from '~components/Draggable';
-import Button from '../components/Button';
+import Alert from '../components/Alert';
+import Dashboard from '~components/Dashboard';
 import cssText from 'data-text:~style.css';
+import { AppContextProvider } from '~context/AppContext';
 
 export const config: PlasmoCSConfig = {
   matches: ['http://127.0.0.1:5500/*'],
+  css: ['font.css'],
 };
 
 export const getStyle = () => {
@@ -14,10 +17,13 @@ export const getStyle = () => {
   return style;
 };
 
-export default function Container() {
+export default function Modal() {
   return (
-    <Draggable>
-      <Button />
-    </Draggable>
+    <AppContextProvider>
+      <Draggable>
+        <Alert />
+        <Dashboard />
+      </Draggable>
+    </AppContextProvider>
   );
 }
