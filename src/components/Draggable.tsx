@@ -34,7 +34,7 @@ export default function Draggable({ children }: PropsWithChildren) {
   return (
     <>
       <div
-        className="absolute pointer-events-none w-screen h-screen"
+        className="fixed pointer-events-none w-screen max-w-full h-screen"
         ref={containerRef}
       />
       <motion.div
