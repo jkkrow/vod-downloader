@@ -9,3 +9,4 @@ export const SEGMENT_STARTING_DOWNLOAD = 'Segments downloading';
 export const SEGMENT_STICHING = 'Stiching segments';
 export const JOB_FINISHED = 'Ready for download';
 export const SEGMENT_CHUNK_SIZE = 10;
+export const SUPPORTED_FORMATS = ['mp4', 'ogg', 'webm', 'm3u8', 'mpd'] as const;
