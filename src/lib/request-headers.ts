@@ -7,8 +7,6 @@ export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
 
   const id = Math.floor(Math.random() * 1000000000);
 
-  console.log(id);
-
   const rules: chrome.declarativeNetRequest.Rule[] = [
     {
       id,

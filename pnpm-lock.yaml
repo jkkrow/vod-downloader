@@ -15,6 +15,7 @@ specifiers:
   postcss: ^8.4.21
   react: 18.2.0
   react-dom: 18.2.0
+  tailwind-scrollbar: ^3.0.0
   tailwindcss: ^3.2.7
   typescript: 4.9.4
 
@@ -35,6 +36,7 @@ devDependencies:
   '@types/react-dom': 18.0.10
   autoprefixer: 10.4.13_postcss@8.4.21
   postcss: 8.4.21
+  tailwind-scrollbar: 3.0.0_tailwindcss@3.2.7
   tailwindcss: 3.2.7_postcss@8.4.21
   typescript: 4.9.4
 
@@ -5086,6 +5088,15 @@ packages:
       picocolors: 1.0.0
       stable: 0.1.8
     dev: false
+
+  /tailwind-scrollbar/3.0.0_tailwindcss@3.2.7:
+    resolution: {integrity: sha512-OkVRX9Q1T769vk979UZ519jhj/j/zNBHql7zPLI+tlhX+ahksYO4ZryWD29lOETDx9Wj1sw+K1OeW7W3+ECQOA==}
+    engines: {node: '>=12.13.0'}
+    peerDependencies:
+      tailwindcss: 3.x
+    dependencies:
+      tailwindcss: 3.2.7_postcss@8.4.21
+    dev: true
 
   /tailwindcss/3.2.7_postcss@8.4.21:
     resolution: {integrity: sha512-B6DLqJzc21x7wntlH/GsZwEXTBttVSl1FtCzC8WP4oBc/NKef7kaax5jeihkkCEWc831/5NDJ9gRNDK6NEioQQ==}

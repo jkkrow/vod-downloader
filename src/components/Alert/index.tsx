@@ -9,22 +9,37 @@ const alertVariants: Variants = {
   closed: { opacity: 0, transition: { duration: 0 } },
 };
 
+const iconVariants: Variants = {
+  active: {
+    scale: [1, 1.1, 1],
+    transition: { duration: 1, repeat: Infinity, repeatDelay: 2 },
+  },
+  inActive: {
+    scale: 1,
+  },
+};
+
 export default function Alert() {
-  const { mode, toggle } = useContext(AppContext);
+  const { status, mode, toggleMode } = useContext(AppContext);
 
   return (
     <AnimatePresence>
       {mode === 'alert' ? (
         <motion.button
-          className="flex justify-center items-center w-full h-full"
+          className="relative flex justify-center items-center w-full h-full transition-colors"
           variants={alertVariants}
           initial="closed"
           animate="opened"
-          onClick={toggle}
+          onClick={toggleMode}
         >
-          <div className="w-12 h-12">
+          <motion.div
+            className="w-12 h-12"
+            variants={iconVariants}
+            initial="inActive"
+            animate={status === 'pending' ? 'active' : 'inActive'}
+          >
             <DownloadIcon />
-          </div>
+          </motion.div>
         </motion.button>
       ) : null}
     </AnimatePresence>

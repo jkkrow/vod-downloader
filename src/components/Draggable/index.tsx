@@ -19,7 +19,7 @@ const draggableVariants: Variants = {
 };
 
 export default function Draggable({ children }: PropsWithChildren) {
-  const { mode } = useContext(AppContext);
+  const { status, mode } = useContext(AppContext);
   const [dragging, setDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +38,7 @@ export default function Draggable({ children }: PropsWithChildren) {
         ref={containerRef}
       />
       <motion.div
-        className="fixed bottom-12 right-12 w-24 h-24 rounded-full bg-primary text-primary shadow-md overflow-hidden data-[dragging=true]:cursor-pointer"
+        className="fixed bottom-12 right-12 w-24 h-24 rounded-full bg-primary text-primary ring-2 ring-secondary overflow-hidden data-[dragging=true]:cursor-pointer data-[disabled=true]:bg-secondary transition-colors duration-300"
         drag
         dragConstraints={containerRef}
         dragTransition={{ bounceStiffness: 1000, power: 0 }}
@@ -47,6 +47,7 @@ export default function Draggable({ children }: PropsWithChildren) {
         initial={mode === 'alert' ? 'closed' : 'opened'}
         animate={mode === 'alert' ? 'closed' : 'opened'}
         data-dragging={dragging}
+        data-disabled={status === 'idle' && mode === 'alert'}
         onDragStart={dragStartHandler}
         onDragEnd={dragEndHandler}
       >

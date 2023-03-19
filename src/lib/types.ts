@@ -1,3 +1,27 @@
+import type {
+  SUPPORTED_FORMATS,
+  STATIC_FORMATS,
+  DYNAMIC_FORMATS,
+} from '~constant';
+
+export type Queue = QueueItem[];
+export type QueueStatus = 'idle' | 'pending' | 'downloading' | 'completed';
+
+export interface QueueItem {
+  type: 'static' | 'dynamic';
+  uri: string;
+  name: string;
+  format: SupportedFormat;
+  progress: number;
+  size?: number | 'Unknown';
+  bandwidth?: number | 'Unknown';
+  resolution?: number | 'Unknown';
+}
+
+export type SupportedFormat = typeof SUPPORTED_FORMATS[number];
+export type DynamicFormat = typeof DYNAMIC_FORMATS[number];
+export type StaticFormat = typeof STATIC_FORMATS[number];
+
 export interface Manifest {
   allowCache: boolean;
   endList: boolean;

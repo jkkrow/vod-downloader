@@ -7,7 +7,8 @@ import cssText from 'data-text:~style.css';
 import { AppContextProvider } from '~context/AppContext';
 
 export const config: PlasmoCSConfig = {
-  matches: ['http://127.0.0.1:5500/*'],
+  // matches: ['http://127.0.0.1:5500/*'],
+  matches: ['<all_urls>'],
   css: ['font.css'],
 };
 

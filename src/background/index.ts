@@ -1,51 +1,91 @@
-import { Storage } from '@plasmohq/storage';
+import { parse } from 'path';
 
+import { storage } from './storage';
 import { updateHeaders, removeHeaders } from '~lib/request-headers';
 import { parseHls, parseDash } from '~lib/parser';
-import { SUPPORTED_FORMATS, PLAYLIST } from '~constant';
+import { SUPPORTED_FORMATS, STATIC_FORMATS, DYNAMIC_FORMATS } from '~constant';
+import type { Queue, QueueItem, StaticFormat, DynamicFormat } from '~lib/types';
 
 export {};
 
-const storage = new Storage({ area: 'session' });
+chrome.storage.session.setAccessLevel({
+  accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS',
+});
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
-  ({ url, requestHeaders }) => {
-    const supported = filterUrl(url);
-    switch (supported) {
-      case 'm3u8':
-      case 'mpd':
-        saveMetadata(url, requestHeaders, supported);
+  ({ url: uri, requestHeaders, tabId }) => {
+    const { ext } = parse(uri);
+    const format = ext.replace('.', '') as any;
+
+    if (!SUPPORTED_FORMATS.includes(format) || tabId <= 0) {
+      return;
+    }
+
+    if (STATIC_FORMATS.includes(format)) {
+      interceptStaticFile(uri, requestHeaders, tabId, format);
+    }
+
+    if (DYNAMIC_FORMATS.includes(format)) {
+      interceptDynamicFile(uri, requestHeaders, tabId, format);
     }
   },
   { urls: ['<all_urls>'] },
   ['requestHeaders', 'extraHeaders']
 );
 
-async function saveMetadata(
-  url: string,
+async function interceptDynamicFile(
+  uri: string,
   requestHeaders: chrome.webRequest.HttpHeader[],
-  format: 'm3u8' | 'mpd'
+  tabId: number,
+  format: DynamicFormat
 ) {
-  const existingUrl = await storage.get(url);
+  const tab = await chrome.tabs.get(tabId);
+  const domain = parse(tab.url).dir;
 
-  if (existingUrl) return;
+  const queue: Queue = (await storage.get(domain)) || [];
+  const existingItem = queue.find((item) => item.uri === uri);
 
-  await storage.set(url, true);
+  if (!existingItem) {
+    const id = await updateHeaders(requestHeaders);
+    const response = await fetch(uri, { cache: 'no-cache' });
+    const data = await response.text();
+    await removeHeaders(id);
 
-  const id = await updateHeaders(requestHeaders);
-  const response = await fetch(url, { cache: 'no-cache' });
-  const data = await response.text();
-  await removeHeaders(id);
-
-  const parser = format === 'm3u8' ? parseHls : parseDash;
-  const result = await parser(url, data);
-
-  console.log(result);
+    const parser = format === 'm3u8' ? parseHls : parseDash;
+    const result = await parser(uri, data);
+  }
 }
 
-function filterUrl(url: string) {
-  const ext = url.split(/[#?]/)[0].split('.').pop().trim();
-  return SUPPORTED_FORMATS.includes(ext as any)
-    ? (ext as typeof SUPPORTED_FORMATS[number])
-    : false;
+async function interceptStaticFile(
+  uri: string,
+  requestHeaders: chrome.webRequest.HttpHeader[],
+  tabId: number,
+  format: StaticFormat
+) {
+  const tab = await chrome.tabs.get(tabId);
+  const domain = parse(tab.url).dir;
+
+  const queue: Queue = (await storage.get(domain)) || [];
+  const existingItem = queue.find((item) => item.uri === uri);
+
+  if (!existingItem) {
+    const { name } = parse(uri);
+    const id = await updateHeaders(requestHeaders);
+    const response = await fetch(uri, { method: 'HEAD', cache: 'no-cache' });
+    const size = +response.headers.get('Content-Length') || 'Unknown';
+    await removeHeaders(id);
+
+    const newItem: QueueItem = {
+      type: 'static',
+      name,
+      uri,
+      format,
+      size,
+      progress: 0,
+    };
+
+    queue.push(newItem);
+
+    await storage.set(domain, queue);
+  }
 }
