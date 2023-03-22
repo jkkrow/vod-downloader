@@ -7,6 +7,7 @@ specifiers:
   '@types/node': 18.11.18
   '@types/react': 18.0.27
   '@types/react-dom': 18.0.10
+  async-mutex: ^0.4.0
   autoprefixer: ^10.4.13
   framer-motion: ^10.0.2
   m3u8-parser: ^6.0.0
@@ -22,6 +23,7 @@ specifiers:
 dependencies:
   '@plasmohq/messaging': 0.1.1_react@18.2.0
   '@plasmohq/storage': 1.2.0_react@18.2.0
+  async-mutex: 0.4.0
   framer-motion: 10.0.2_biqbaboplfbrettd7655fr4n2y
   m3u8-parser: 6.0.0
   mpd-parser: 0.22.1
@@ -2275,6 +2277,12 @@ packages:
   /array-union/2.1.0:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
     engines: {node: '>=8'}
+    dev: false
+
+  /async-mutex/0.4.0:
+    resolution: {integrity: sha512-eJFZ1YhRR8UN8eBLoNzcDPcy/jqjsg6I1AP+KvWQX80BqOSW1oJPJXDylPUEeMr2ZQvHgnQ//Lp6f3RQ1zI7HA==}
+    dependencies:
+      tslib: 2.5.0
     dev: false
 
   /async/3.2.4:

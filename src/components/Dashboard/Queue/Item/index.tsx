@@ -1,10 +1,10 @@
 import Format from './Format';
 import Download from './Download';
 import { formatSize } from '~lib/format';
-import type { QueueItem as QueueItemType } from '~lib/types';
+import type { StaticItem, SegmentsItem, PlaylistsItem } from '~lib/types';
 
 interface QueueItemProps {
-  item: QueueItemType;
+  item: StaticItem | SegmentsItem | PlaylistsItem;
 }
 
 export default function QueueItem({ item }: QueueItemProps) {
@@ -16,14 +16,26 @@ export default function QueueItem({ item }: QueueItemProps) {
       <div className="flex flex-col justify-center">
         <div>{item.name}</div>
         <div className="flex gap-2 text-sm">
-          {item.size ? (
+          {item.type !== 'playlists' ? (
             <div>
               size:{' '}
               {item.size === 'Unknown' ? item.size : formatSize(item.size)}
             </div>
           ) : null}
-          {item.resolution ? <div></div> : null}
-          {item.bandwidth ? <div>bandwidth: {item.bandwidth}</div> : null}
+          {item.type === 'playlists'
+            ? item.playlists.map((playlist) => (
+                <div className="flex" key={playlist.uri}>
+                  <div>resolution: {playlist.resolution}p</div>
+                  <div>bandwidth: {playlist.bandwidth}</div>
+                  <div>
+                    size:{' '}
+                    {playlist.size === 'Unknown'
+                      ? playlist.size
+                      : formatSize(playlist.size)}
+                  </div>
+                </div>
+              ))
+            : null}
         </div>
       </div>
       <Download uri={item.uri} />

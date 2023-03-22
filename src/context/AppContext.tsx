@@ -50,7 +50,7 @@ export function AppContextProvider({ children }: PropsWithChildren) {
     }
 
     return status;
-  }, [queue.length]);
+  }, [queue]);
 
   useEffect(() => {
     const updateDomainHandler = () => {

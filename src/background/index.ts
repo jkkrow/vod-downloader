@@ -1,25 +1,43 @@
 import { parse } from 'path';
+import { Mutex } from 'async-mutex';
 
 import { storage } from './storage';
-import { updateHeaders, removeHeaders } from '~lib/request-headers';
-import { parseHls, parseDash } from '~lib/parser';
+import { updateHeaders } from '~lib/request-headers';
+import {
+  parseHls,
+  parseDash,
+  calculatePlaylistsSize,
+  calculateSegmentsSize,
+} from '~lib/parser';
+import type {
+  Queue,
+  StaticItem,
+  StaticFormat,
+  DynamicFormat,
+  SegmentsItem,
+  PlaylistsItem,
+} from '~lib/types';
 import { SUPPORTED_FORMATS, STATIC_FORMATS, DYNAMIC_FORMATS } from '~constant';
-import type { Queue, QueueItem, StaticFormat, DynamicFormat } from '~lib/types';
 
 export {};
+
+const mutex = new Mutex();
 
 chrome.storage.session.setAccessLevel({
   accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS',
 });
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
-  ({ url: uri, requestHeaders, tabId }) => {
+  ({ url: uri, requestHeaders = [], tabId }) => {
     const { ext } = parse(uri);
     const format = ext.replace('.', '') as any;
 
     if (!SUPPORTED_FORMATS.includes(format) || tabId <= 0) {
       return;
     }
+
+    // TODO: Skip audio
+    if (uri.includes('audio')) return;
 
     if (STATIC_FORMATS.includes(format)) {
       interceptStaticFile(uri, requestHeaders, tabId, format);
@@ -39,21 +57,68 @@ async function interceptDynamicFile(
   tabId: number,
   format: DynamicFormat
 ) {
+  if (mutex.isLocked()) await mutex.waitForUnlock();
+
+  const release = await mutex.acquire();
   const tab = await chrome.tabs.get(tabId);
-  const domain = parse(tab.url).dir;
+  const domain = new URL(tab.url || '').origin;
 
   const queue: Queue = (await storage.get(domain)) || [];
-  const existingItem = queue.find((item) => item.uri === uri);
+  const existingItem = queue.find((item) => {
+    if (item.type === 'playlists') {
+      const variants = item.playlists.find((playlist) => playlist.uri == uri);
+      return item.uri === uri || variants;
+    } else {
+      return item.uri === uri;
+    }
+  });
 
   if (!existingItem) {
-    const id = await updateHeaders(requestHeaders);
+    const { name } = parse(uri);
+    await updateHeaders(requestHeaders);
     const response = await fetch(uri, { cache: 'no-cache' });
-    const data = await response.text();
-    await removeHeaders(id);
+    const manifest = await response.text();
 
     const parser = format === 'm3u8' ? parseHls : parseDash;
-    const result = await parser(uri, data);
+    const result = await parser(uri, manifest);
+
+    if (result.playlists) {
+      const totalSizes = await calculatePlaylistsSize(result.playlists);
+      const playlists = result.playlists.map((playlist, i) => ({
+        ...playlist,
+        size: totalSizes[i],
+      }));
+
+      const newItem: PlaylistsItem = {
+        type: 'playlists',
+        name,
+        format,
+        uri,
+        progress: 0,
+        playlists,
+      };
+
+      queue.push(newItem);
+      await storage.set(domain, queue);
+    }
+
+    if (result.segments) {
+      const size = await calculateSegmentsSize(result.segments);
+      const newItem: SegmentsItem = {
+        type: 'segments',
+        name,
+        format,
+        uri,
+        size,
+        progress: 0,
+      };
+
+      queue.push(newItem);
+      await storage.set(domain, queue);
+    }
   }
+
+  release();
 }
 
 async function interceptStaticFile(
@@ -62,20 +127,22 @@ async function interceptStaticFile(
   tabId: number,
   format: StaticFormat
 ) {
+  if (mutex.isLocked()) await mutex.waitForUnlock();
+
+  const release = await mutex.acquire();
   const tab = await chrome.tabs.get(tabId);
-  const domain = parse(tab.url).dir;
+  const domain = new URL(tab.url || '').origin;
 
   const queue: Queue = (await storage.get(domain)) || [];
   const existingItem = queue.find((item) => item.uri === uri);
 
   if (!existingItem) {
     const { name } = parse(uri);
-    const id = await updateHeaders(requestHeaders);
+    await updateHeaders(requestHeaders);
     const response = await fetch(uri, { method: 'HEAD', cache: 'no-cache' });
-    const size = +response.headers.get('Content-Length') || 'Unknown';
-    await removeHeaders(id);
+    const size = +(response.headers.get('Content-Length') || -1) || 'Unknown';
 
-    const newItem: QueueItem = {
+    const newItem: StaticItem = {
       type: 'static',
       name,
       uri,
@@ -85,7 +152,8 @@ async function interceptStaticFile(
     };
 
     queue.push(newItem);
-
     await storage.set(domain, queue);
   }
+
+  release();
 }

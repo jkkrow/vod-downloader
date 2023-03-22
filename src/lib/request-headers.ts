@@ -5,11 +5,9 @@ export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
     value,
   }));
 
-  const id = Math.floor(Math.random() * 1000000000);
-
   const rules: chrome.declarativeNetRequest.Rule[] = [
     {
-      id,
+      id: 1,
       action: {
         type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
         requestHeaders,
@@ -24,16 +22,9 @@ export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
     },
   ];
 
+  const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
   await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [id],
+    removeRuleIds: existingRules.map((rule) => rule.id),
     addRules: rules,
-  });
-
-  return id;
-}
-
-export async function removeHeaders(id: number) {
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [id],
   });
 }

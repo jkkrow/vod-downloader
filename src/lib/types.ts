@@ -4,19 +4,49 @@ import type {
   DYNAMIC_FORMATS,
 } from '~constant';
 
-export type Queue = QueueItem[];
+export type Queue = (StaticItem | PlaylistsItem | SegmentsItem)[];
 export type QueueStatus = 'idle' | 'pending' | 'downloading' | 'completed';
 
 export interface QueueItem {
-  type: 'static' | 'dynamic';
-  uri: string;
+  type: 'static' | 'segments' | 'playlists';
   name: string;
+  uri: string;
   format: SupportedFormat;
   progress: number;
-  size?: number | 'Unknown';
-  bandwidth?: number | 'Unknown';
-  resolution?: number | 'Unknown';
 }
+
+export interface StaticItem extends QueueItem {
+  type: 'static';
+  size: number | 'Unknown';
+}
+
+export interface SegmentsItem extends QueueItem {
+  type: 'segments';
+  size: number | 'Unknown';
+}
+
+export interface PlaylistsItem extends QueueItem {
+  type: 'playlists';
+  playlists: {
+    uri: string;
+    size: number | 'Unknown';
+    bandwidth: number | 'Unknown';
+    resolution: number | 'Unknown';
+  }[];
+}
+
+export interface ParseResult {
+  playlists?: ParsedPlaylists;
+  segments?: ParsedSegments;
+}
+
+export type ParsedPlaylists = {
+  uri: string;
+  resolution: number | 'Unknown';
+  bandwidth: number | 'Unknown';
+}[];
+
+export type ParsedSegments = { uri: string; duration?: number }[];
 
 export type SupportedFormat = typeof SUPPORTED_FORMATS[number];
 export type DynamicFormat = typeof DYNAMIC_FORMATS[number];

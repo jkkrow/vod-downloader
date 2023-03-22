@@ -8,7 +8,7 @@ interface FormatProps {
 export default function Format({ ext }: FormatProps) {
   return (
     <div className="relative flex justify-center items-center">
-      <span className="absolute translate-x-1/4 pr-1 text-sm bg-primary">
+      <span className="absolute translate-x-1/4 pr-1 text-sm font-medium bg-primary">
         {ext}
       </span>
       <span className="w-12 h-12">
