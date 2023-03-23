@@ -10,7 +10,10 @@ export default function Download({ uri }: DownloadProps) {
   };
 
   return (
-    <button className="w-12 h-12 p-2 ml-auto" onClick={downloadHandler}>
+    <button
+      className="flex-shrink-0 w-12 h-12 p-2 ml-auto"
+      onClick={downloadHandler}
+    >
       <DownloadIcon />
     </button>
   );

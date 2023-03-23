@@ -21,6 +21,7 @@
     "react-dom": "18.2.0"
   },
   "devDependencies": {
+    "@tailwindcss/line-clamp": "^0.4.2",
     "@types/chrome": "0.0.210",
     "@types/node": "18.11.18",
     "@types/react": "18.0.27",
@@ -33,7 +34,8 @@
   },
   "manifest": {
     "host_permissions": [
-      "https://*/*"
+      "https://*/*",
+      "http://*/*"
     ],
     "permissions": [
       "tabs",

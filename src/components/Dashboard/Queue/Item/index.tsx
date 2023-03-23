@@ -1,5 +1,6 @@
 import Format from './Format';
 import Download from './Download';
+import Playlists from './Playlists';
 import { formatSize } from '~lib/format';
 import type { StaticItem, SegmentsItem, PlaylistsItem } from '~lib/types';
 
@@ -8,37 +9,25 @@ interface QueueItemProps {
 }
 
 export default function QueueItem({ item }: QueueItemProps) {
-  const downloadHandler = () => {};
-
   return (
-    <div className="flex items-center p-2 gap-4">
-      <Format ext={item.format} />
-      <div className="flex flex-col justify-center">
-        <div>{item.name}</div>
-        <div className="flex gap-2 text-sm">
-          {item.type !== 'playlists' ? (
-            <div>
-              size:{' '}
-              {item.size === 'Unknown' ? item.size : formatSize(item.size)}
-            </div>
-          ) : null}
-          {item.type === 'playlists'
-            ? item.playlists.map((playlist) => (
-                <div className="flex" key={playlist.uri}>
-                  <div>resolution: {playlist.resolution}p</div>
-                  <div>bandwidth: {playlist.bandwidth}</div>
-                  <div>
-                    size:{' '}
-                    {playlist.size === 'Unknown'
-                      ? playlist.size
-                      : formatSize(playlist.size)}
-                  </div>
-                </div>
-              ))
-            : null}
+    <div className="flex flex-col py-4 mx-2 gap-4 border-b-[1px] border-primary last:border-b-0">
+      <div className="flex items-center gap-4">
+        <Format ext={item.format} />
+        <div className="flex flex-col gap-1 justify-center">
+          <div className="flex-shrink-0 text-base break-all line-clamp-2">
+            {item.name}
+          </div>
+          <div className="flex gap-2 text-xs">
+            {item.type !== 'playlists' ? (
+              <div>size: {formatSize(item.size)}</div>
+            ) : null}
+          </div>
         </div>
+        <Download uri={item.uri} />
       </div>
-      <Download uri={item.uri} />
+      {item.type === 'playlists' ? (
+        <Playlists playlists={item.playlists} />
+      ) : null}
     </div>
   );
 }

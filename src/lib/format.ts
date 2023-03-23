@@ -1,4 +1,5 @@
-export function formatSize(bytes: number, decimals = 0) {
+export function formatSize(bytes: number | 'Unknown', decimals = 0) {
+  if (bytes === 'Unknown') return 'Unknown';
   if (bytes === 0) return '0 B';
 
   const k = 1000;

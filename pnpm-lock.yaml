@@ -3,6 +3,7 @@ lockfileVersion: 5.4
 specifiers:
   '@plasmohq/messaging': ^0.1.1
   '@plasmohq/storage': ^1.2.0
+  '@tailwindcss/line-clamp': ^0.4.2
   '@types/chrome': 0.0.210
   '@types/node': 18.11.18
   '@types/react': 18.0.27
@@ -32,6 +33,7 @@ dependencies:
   react-dom: 18.2.0_react@18.2.0
 
 devDependencies:
+  '@tailwindcss/line-clamp': 0.4.2_tailwindcss@3.2.7
   '@types/chrome': 0.0.210
   '@types/node': 18.11.18
   '@types/react': 18.0.27
@@ -2035,6 +2037,14 @@ packages:
     dependencies:
       defer-to-connect: 2.0.1
     dev: false
+
+  /@tailwindcss/line-clamp/0.4.2_tailwindcss@3.2.7:
+    resolution: {integrity: sha512-HFzAQuqYCjyy/SX9sLGB1lroPzmcnWv1FHkIpmypte10hptf4oPUfucryMKovZh2u0uiS9U5Ty3GghWfEJGwVw==}
+    peerDependencies:
+      tailwindcss: '>=2.0.0 || >=3.0.0 || >=3.0.0-alpha.1'
+    dependencies:
+      tailwindcss: 3.2.7_postcss@8.4.21
+    dev: true
 
   /@trysound/sax/0.2.0:
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}

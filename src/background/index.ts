@@ -36,9 +36,6 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
       return;
     }
 
-    // TODO: Skip audio
-    if (uri.includes('audio')) return;
-
     if (STATIC_FORMATS.includes(format)) {
       interceptStaticFile(uri, requestHeaders, tabId, format);
     }
@@ -65,12 +62,9 @@ async function interceptDynamicFile(
 
   const queue: Queue = (await storage.get(domain)) || [];
   const existingItem = queue.find((item) => {
-    if (item.type === 'playlists') {
-      const variants = item.playlists.find((playlist) => playlist.uri == uri);
-      return item.uri === uri || variants;
-    } else {
-      return item.uri === uri;
-    }
+    const { name: itemName } = parse(item.uri);
+    const { name: uriName } = parse(uri);
+    return uriName.includes(itemName);
   });
 
   if (!existingItem) {
@@ -140,7 +134,7 @@ async function interceptStaticFile(
     const { name } = parse(uri);
     await updateHeaders(requestHeaders);
     const response = await fetch(uri, { method: 'HEAD', cache: 'no-cache' });
-    const size = +(response.headers.get('Content-Length') || -1) || 'Unknown';
+    const size = +(response.headers.get('Content-Length') || 0) || 'Unknown';
 
     const newItem: StaticItem = {
       type: 'static',
