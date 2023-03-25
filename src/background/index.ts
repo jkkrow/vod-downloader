@@ -11,9 +11,9 @@ import {
 } from '~lib/parser';
 import type {
   Queue,
-  StaticItem,
   StaticFormat,
   DynamicFormat,
+  StaticItem,
   SegmentsItem,
   PlaylistsItem,
 } from '~lib/types';
@@ -59,6 +59,7 @@ async function interceptDynamicFile(
   const release = await mutex.acquire();
   const tab = await chrome.tabs.get(tabId);
   const domain = new URL(tab.url || '').origin;
+  await storage.set(domain + 'loading', true);
 
   const queue: Queue = (await storage.get(domain)) || [];
   const existingItem = queue.find((item) => {
@@ -79,8 +80,11 @@ async function interceptDynamicFile(
     if (result.playlists) {
       const totalSizes = await calculatePlaylistsSize(result.playlists);
       const playlists = result.playlists.map((playlist, i) => ({
-        ...playlist,
+        uri: playlist.uri,
+        resolution: playlist.resolution,
+        bandwidth: playlist.bandwidth,
         size: totalSizes[i],
+        progress: 0,
       }));
 
       const newItem: PlaylistsItem = {
@@ -88,12 +92,10 @@ async function interceptDynamicFile(
         name,
         format,
         uri,
-        progress: 0,
         playlists,
       };
 
       queue.push(newItem);
-      await storage.set(domain, queue);
     }
 
     if (result.segments) {
@@ -108,10 +110,11 @@ async function interceptDynamicFile(
       };
 
       queue.push(newItem);
-      await storage.set(domain, queue);
     }
   }
 
+  await storage.set(domain, queue);
+  await storage.set(domain + 'loading', false);
   release();
 }
 
@@ -126,6 +129,7 @@ async function interceptStaticFile(
   const release = await mutex.acquire();
   const tab = await chrome.tabs.get(tabId);
   const domain = new URL(tab.url || '').origin;
+  await storage.set(domain + 'loading', true);
 
   const queue: Queue = (await storage.get(domain)) || [];
   const existingItem = queue.find((item) => item.uri === uri);
@@ -146,8 +150,9 @@ async function interceptStaticFile(
     };
 
     queue.push(newItem);
-    await storage.set(domain, queue);
   }
 
+  await storage.set(domain, queue);
+  await storage.set(domain + 'loading', false);
   release();
 }

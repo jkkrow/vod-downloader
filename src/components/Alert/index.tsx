@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 
+import Spinner from '~components/Spinner';
 import DownloadIcon from 'react:~assets/icons/download.svg';
 import { AppContext } from '~context/AppContext';
 
@@ -20,7 +21,7 @@ const iconVariants: Variants = {
 };
 
 export default function Alert() {
-  const { status, mode, toggleMode } = useContext(AppContext);
+  const { status, loading, mode, toggleMode } = useContext(AppContext);
 
   return (
     <AnimatePresence>
@@ -40,6 +41,7 @@ export default function Alert() {
           >
             <DownloadIcon />
           </motion.div>
+          <Spinner on={loading} size={40} overlay />
         </motion.button>
       ) : null}
     </AnimatePresence>

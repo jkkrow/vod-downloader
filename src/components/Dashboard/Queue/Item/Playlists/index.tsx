@@ -27,7 +27,7 @@ export default function Playlists({ playlists }: PlaylistsProps) {
       {sortedPlaylists.map((playlist, i) => (
         <li
           className="border-2 rounded-md border-secondary px-2 py-1 aria-selected:border-primary"
-          key={playlist.uri}
+          key={playlist.uri || playlist.bandwidth}
           aria-selected={selectedIndex === i}
           onClick={() => setSelectedIndex(i)}
         >

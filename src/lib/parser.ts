@@ -2,7 +2,6 @@ import path from 'path';
 import { Parser } from 'm3u8-parser';
 import { parse } from 'mpd-parser';
 
-import { DYNAMIC_FORMATS } from '~constant';
 import type { Manifest, ParsedPlaylists, ParsedSegments } from './types';
 import type { ParseResult } from './types';
 
@@ -57,13 +56,25 @@ function formatManifest(
       const resolution = RESOLUTION?.height || ('Unknown' as const);
       const bandwidth = BANDWIDTH || ('Unknown' as const);
 
-      const uri = item.uri || item.resolvedUri || item.sidx?.uri || '';
-      const uriWithDomain = baseUri.replace('{{URI}}', uri);
-      const formattedUri = uri.startsWith('http') ? uri : uriWithDomain;
+      const uri = item.uri || item.resolvedUri || item.sidx?.uri;
+      const uriWithDomain = uri ? baseUri.replace('{{URI}}', uri) : undefined;
+      const formattedUri = uri && uri.startsWith('http') ? uri : uriWithDomain;
+
+      const segments = item.segments;
+
+      if (segments) {
+        segments.forEach((segment) => {
+          const uri = segment.uri;
+          const uriWithDomain = baseUri.replace('{{URI}}', uri);
+          const formattedUri = uri.startsWith('http') ? uri : uriWithDomain;
+          segment.uri = formattedUri;
+        });
+      }
 
       return {
         ...item,
-        uri: formattedUri || undefined,
+        uri: formattedUri,
+        segments,
         resolution,
         bandwidth,
       };
@@ -94,13 +105,30 @@ export async function calculatePlaylistsSize(
   playlists: ParsedPlaylists
 ): Promise<(number | 'Unknown')[]> {
   const manifestUris = playlists
-    .filter((item) => item.uri !== undefined)
+    .filter((item) => item.uri)
     .map((item) => item.uri as string);
+
+  if (!manifestUris.length) {
+    // Handle manifests that has segments inside playlists
+    const totalSizes: (number | 'Unknown')[] = [];
+
+    for (const { segments } of playlists) {
+      if (segments) {
+        const size = await calculateSegmentsSize(segments);
+        totalSizes.push(size);
+      } else {
+        totalSizes.push('Unknown');
+      }
+    }
+
+    return totalSizes;
+  }
 
   const { ext } = path.parse(manifestUris[0]);
   const format = ext.replace('.', '');
 
   if (format === 'cmfv') {
+    // Handle cmaf formats
     const responses = manifestUris.map((uri) => fetch(uri, { method: 'HEAD' }));
     const datas = await Promise.all(responses);
     const sizes = datas.map(
@@ -131,14 +159,18 @@ export async function calculatePlaylistsSize(
 export async function calculateSegmentsSize(
   segments: ParsedSegments
 ): Promise<number | 'Unknown'> {
-  const uris = segments.map((item) => item.uri);
-  const responses = uris.map((uri) => fetch(uri, { method: 'HEAD' }));
+  try {
+    const uris = segments.map((item) => item.uri);
+    const responses = uris.map((uri) => fetch(uri, { method: 'HEAD' }));
 
-  const sizes = await Promise.all(responses);
-  const totalSize = sizes.reduce(
-    (prev, cur) => prev + +(cur.headers.get('Content-Length') || 0),
-    0
-  );
+    const sizes = await Promise.all(responses);
+    const totalSize = sizes.reduce(
+      (prev, cur) => prev + +(cur.headers.get('Content-Length') || 0),
+      0
+    );
 
-  return totalSize || 'Unknown';
+    return totalSize || 'Unknown';
+  } catch (error) {
+    return 'Unknown';
+  }
 }
