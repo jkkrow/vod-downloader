@@ -22,11 +22,13 @@ module.exports = {
         primary: colors.neutral[100],
         secondary: colors.neutral[500],
         tertiary: colors.neutral[700],
+        inversed: colors.neutral[900],
       }),
       backgroundColor: ({ colors }) => ({
         primary: colors.neutral[900],
         secondary: colors.neutral[500],
         tertiary: colors.neutral[300],
+        inversed: colors.neutral[100],
       }),
     },
   },

@@ -1,7 +1,8 @@
 import { parse } from 'path';
 import { Mutex } from 'async-mutex';
 
-import { storage } from './storage';
+import { getQueue, addQueueItem, setLoadingStatus } from './storage';
+import { getDomain } from '~lib/domain';
 import { updateHeaders } from '~lib/request-headers';
 import {
   parseHls,
@@ -9,15 +10,14 @@ import {
   calculatePlaylistsSize,
   calculateSegmentsSize,
 } from '~lib/parser';
+import { SUPPORTED_FORMATS, STATIC_FORMATS, DYNAMIC_FORMATS } from '~constant';
 import type {
-  Queue,
   StaticFormat,
   DynamicFormat,
   StaticItem,
   SegmentsItem,
   PlaylistsItem,
-} from '~lib/types';
-import { SUPPORTED_FORMATS, STATIC_FORMATS, DYNAMIC_FORMATS } from '~constant';
+} from '~types';
 
 export {};
 
@@ -37,31 +37,32 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     }
 
     if (STATIC_FORMATS.includes(format)) {
-      interceptStaticFile(uri, requestHeaders, tabId, format);
+      setStaticQueueItem(uri, requestHeaders, tabId, format);
     }
 
     if (DYNAMIC_FORMATS.includes(format)) {
-      interceptDynamicFile(uri, requestHeaders, tabId, format);
+      setDynamicQueueItem(uri, requestHeaders, tabId, format);
     }
   },
   { urls: ['<all_urls>'] },
   ['requestHeaders', 'extraHeaders']
 );
 
-async function interceptDynamicFile(
+async function setDynamicQueueItem(
   uri: string,
   requestHeaders: chrome.webRequest.HttpHeader[],
   tabId: number,
   format: DynamicFormat
 ) {
+  const domain = await getDomain(tabId);
+
+  if (!domain) return;
   if (mutex.isLocked()) await mutex.waitForUnlock();
 
   const release = await mutex.acquire();
-  const tab = await chrome.tabs.get(tabId);
-  const domain = new URL(tab.url || '').origin;
-  await storage.set(domain + 'loading', true);
+  await setLoadingStatus(domain, true);
 
-  const queue: Queue = (await storage.get(domain)) || [];
+  const queue = await getQueue(domain);
   const existingItem = queue.find((item) => {
     const { name: itemName } = parse(item.uri);
     const { name: uriName } = parse(uri);
@@ -71,7 +72,7 @@ async function interceptDynamicFile(
   if (!existingItem) {
     const { name } = parse(uri);
     await updateHeaders(requestHeaders);
-    const response = await fetch(uri, { cache: 'no-cache' });
+    const response = await fetch(uri);
     const manifest = await response.text();
 
     const parser = format === 'm3u8' ? parseHls : parseDash;
@@ -87,7 +88,7 @@ async function interceptDynamicFile(
         progress: 0,
       }));
 
-      const newItem: PlaylistsItem = {
+      const queueItem: PlaylistsItem = {
         type: 'playlists',
         name,
         format,
@@ -95,12 +96,12 @@ async function interceptDynamicFile(
         playlists,
       };
 
-      queue.push(newItem);
+      await addQueueItem(domain, queueItem);
     }
 
     if (result.segments) {
       const size = await calculateSegmentsSize(result.segments);
-      const newItem: SegmentsItem = {
+      const queueItem: SegmentsItem = {
         type: 'segments',
         name,
         format,
@@ -109,38 +110,38 @@ async function interceptDynamicFile(
         progress: 0,
       };
 
-      queue.push(newItem);
+      await addQueueItem(domain, queueItem);
     }
   }
 
-  await storage.set(domain, queue);
-  await storage.set(domain + 'loading', false);
+  await setLoadingStatus(domain, false);
   release();
 }
 
-async function interceptStaticFile(
+async function setStaticQueueItem(
   uri: string,
   requestHeaders: chrome.webRequest.HttpHeader[],
   tabId: number,
   format: StaticFormat
 ) {
+  const domain = await getDomain(tabId);
+
+  if (!domain) return;
   if (mutex.isLocked()) await mutex.waitForUnlock();
 
   const release = await mutex.acquire();
-  const tab = await chrome.tabs.get(tabId);
-  const domain = new URL(tab.url || '').origin;
-  await storage.set(domain + 'loading', true);
+  await setLoadingStatus(domain, true);
 
-  const queue: Queue = (await storage.get(domain)) || [];
+  const queue = await getQueue(domain);
   const existingItem = queue.find((item) => item.uri === uri);
 
   if (!existingItem) {
     const { name } = parse(uri);
     await updateHeaders(requestHeaders);
-    const response = await fetch(uri, { method: 'HEAD', cache: 'no-cache' });
+    const response = await fetch(uri, { method: 'HEAD' });
     const size = +(response.headers.get('Content-Length') || 0) || 'Unknown';
 
-    const newItem: StaticItem = {
+    const queueItem: StaticItem = {
       type: 'static',
       name,
       uri,
@@ -149,10 +150,9 @@ async function interceptStaticFile(
       progress: 0,
     };
 
-    queue.push(newItem);
+    await addQueueItem(domain, queueItem);
   }
 
-  await storage.set(domain, queue);
-  await storage.set(domain + 'loading', false);
+  await setLoadingStatus(domain, false);
   release();
 }

@@ -1,7 +1,13 @@
 import type { PlasmoMessaging } from '@plasmohq/messaging';
 
+import { toggleBlacklist } from '~background/storage';
+
 const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
-  res.send({ message: 'Testing' });
+  const domain = req.body;
+
+  await toggleBlacklist(domain);
+
+  res.send({});
 };
 
 export default handler;

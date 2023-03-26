@@ -2,8 +2,8 @@ import path from 'path';
 import { Parser } from 'm3u8-parser';
 import { parse } from 'mpd-parser';
 
-import type { Manifest, ParsedPlaylists, ParsedSegments } from './types';
-import type { ParseResult } from './types';
+import type { Manifest, ParsedPlaylists, ParsedSegments } from '../types';
+import type { ParseResult } from '../types';
 
 export async function parseHls(
   hlsUri: string,

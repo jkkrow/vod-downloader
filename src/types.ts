@@ -4,6 +4,11 @@ import type {
   DYNAMIC_FORMATS,
 } from '~constant';
 
+export type Activation = {
+  on: boolean;
+  blacklist: string[];
+};
+
 export type Queue = (StaticItem | PlaylistsItem | SegmentsItem)[];
 export type QueueStatus = 'idle' | 'pending' | 'downloading' | 'completed';
 

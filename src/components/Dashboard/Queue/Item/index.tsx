@@ -2,7 +2,7 @@ import Format from './Format';
 import Download from './Download';
 import Playlists from './Playlists';
 import { formatSize } from '~lib/format';
-import type { StaticItem, SegmentsItem, PlaylistsItem } from '~lib/types';
+import type { StaticItem, SegmentsItem, PlaylistsItem } from '~types';
 
 interface QueueItemProps {
   item: StaticItem | SegmentsItem | PlaylistsItem;

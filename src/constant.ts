@@ -23,3 +23,5 @@ export const EXT_MAP = {
   flac: 'audio/flac',
   wav: 'audio/wav',
 } as const;
+export const ACTIVATION_KEY = 'activation';
+export const LOADING_KEY = 'loading';

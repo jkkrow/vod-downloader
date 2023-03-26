@@ -8,10 +8,12 @@ import {
   useMemo,
 } from 'react';
 
-import type { Queue, QueueStatus } from '~lib/types';
-import { storage } from '~background/storage';
+import { sessionStorage, localStorage } from '~background/storage';
+import { LOADING_KEY, ACTIVATION_KEY } from '~constant';
+import type { Queue, QueueStatus, Activation } from '~types';
 
 export interface AppContextState {
+  activation: Activation;
   domain: string;
   mode: 'alert' | 'dashboard';
   queue: Queue;
@@ -21,6 +23,7 @@ export interface AppContextState {
 }
 
 const initialState: AppContextState = {
+  activation: { on: false, blacklist: [] },
   domain: '',
   mode: 'alert',
   queue: [],
@@ -34,10 +37,20 @@ export const AppContext = createContext(initialState);
 export function AppContextProvider({ children }: PropsWithChildren) {
   const [mode, setMode] = useState<'alert' | 'dashboard'>('alert');
   const [domain, setDomain] = useState(window.location.origin);
-  const [queue] = useStorage<Queue>({ key: domain, instance: storage }, []);
+
+  const [activation] = useStorage<Activation>(
+    { key: ACTIVATION_KEY, instance: localStorage },
+    initialState.activation
+  );
+
+  const [queue] = useStorage<Queue>(
+    { key: domain, instance: sessionStorage },
+    initialState.queue
+  );
+
   const [loading] = useStorage<boolean>(
-    { key: domain + 'loading', instance: storage },
-    false
+    { key: domain + LOADING_KEY, instance: sessionStorage },
+    initialState.loading
   );
 
   const status = useMemo(() => {
@@ -97,6 +110,7 @@ export function AppContextProvider({ children }: PropsWithChildren) {
   return (
     <AppContext.Provider
       value={{
+        activation,
         domain,
         mode,
         queue,

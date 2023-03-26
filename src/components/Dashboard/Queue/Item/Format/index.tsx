@@ -1,5 +1,5 @@
 import FileIcon from 'react:~assets/icons/file.svg';
-import type { SupportedFormat } from '~lib/types';
+import type { SupportedFormat } from '~types';
 
 interface FormatProps {
   ext: SupportedFormat;
