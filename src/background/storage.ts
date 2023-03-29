@@ -1,6 +1,6 @@
 import { Storage } from '@plasmohq/storage';
 
-import type { Activation, Queue } from '~types';
+import type { Activation, PlaylistsItem, Queue } from '~types';
 import { ACTIVATION_KEY, LOADING_KEY } from '~constant';
 
 export {};
@@ -16,6 +16,49 @@ export async function getQueue(domain: string) {
 export async function addQueueItem(domain: string, item: Queue[number]) {
   const queue = await getQueue(domain);
   queue.push(item);
+  await sessionStorage.set(domain, queue);
+}
+
+export async function updateQueueItem(
+  domain: string,
+  uri: string,
+  updates: Partial<Queue[number]>
+) {
+  const queue = await getQueue(domain);
+  const matchedItem = queue.find((queueItem) => queueItem.uri === uri);
+
+  if (!matchedItem) return;
+
+  for (const key in updates) {
+    matchedItem[key] = updates[key];
+  }
+
+  await sessionStorage.set(domain, queue);
+}
+
+export async function updatePlaylist(
+  domain: string,
+  uri: string,
+  id: string,
+  updates: Partial<PlaylistsItem['playlists'][number]>
+) {
+  const queue = await getQueue(domain);
+  const matchedItem = queue.find(
+    (queueItem) => queueItem.uri === uri
+  ) as PlaylistsItem;
+
+  if (!matchedItem) return;
+
+  const matchedPlaylist = matchedItem.playlists.find(
+    (playlist) => playlist.id === id
+  );
+
+  if (!matchedPlaylist) return;
+
+  for (const key in updates) {
+    matchedPlaylist[key] = updates[key];
+  }
+
   await sessionStorage.set(domain, queue);
 }
 

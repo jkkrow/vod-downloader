@@ -1,14 +1,22 @@
 import { parse } from 'path';
 import { Mutex } from 'async-mutex';
+import { v4 as uuidv4 } from 'uuid';
 
-import { getQueue, addQueueItem, setLoadingStatus } from './storage';
+import {
+  getQueue,
+  addQueueItem,
+  setLoadingStatus,
+  updateQueueItem,
+  updatePlaylist,
+} from './storage';
 import { getDomain } from '~lib/domain';
 import { updateHeaders } from '~lib/request-headers';
 import {
   parseHls,
   parseDash,
-  calculatePlaylistsSize,
+  getPlaylistSegments,
   calculateSegmentsSize,
+  calculateStaticSize,
 } from '~lib/parser';
 import { SUPPORTED_FORMATS, STATIC_FORMATS, DYNAMIC_FORMATS } from '~constant';
 import type {
@@ -17,6 +25,7 @@ import type {
   StaticItem,
   SegmentsItem,
   PlaylistsItem,
+  ItemSize,
 } from '~types';
 
 export {};
@@ -64,9 +73,9 @@ async function setDynamicQueueItem(
 
   const queue = await getQueue(domain);
   const existingItem = queue.find((item) => {
-    const { name: itemName } = parse(item.uri);
-    const { name: uriName } = parse(uri);
-    return uriName.includes(itemName);
+    const { name: itemName, dir: itemDir } = parse(item.uri);
+    const { name: uriName, dir: uriDir } = parse(uri);
+    return itemDir === uriDir && uriName.includes(itemName);
   });
 
   if (!existingItem) {
@@ -79,15 +88,15 @@ async function setDynamicQueueItem(
     const result = await parser(uri, manifest);
 
     if (result.playlists) {
-      const totalSizes = await calculatePlaylistsSize(result.playlists);
+      const tempSizes: ItemSize[] = result.playlists.map(() => 'Calculating');
       const playlists = result.playlists.map((playlist, i) => ({
+        id: uuidv4(),
         uri: playlist.uri,
         resolution: playlist.resolution,
         bandwidth: playlist.bandwidth,
-        size: totalSizes[i],
+        size: tempSizes[i],
         progress: 0,
       }));
-
       const queueItem: PlaylistsItem = {
         type: 'playlists',
         name,
@@ -97,20 +106,32 @@ async function setDynamicQueueItem(
       };
 
       await addQueueItem(domain, queueItem);
+
+      // Calculate size
+      const playlistsSegments = await getPlaylistSegments(result.playlists);
+
+      for (const [index, segments] of playlistsSegments.entries()) {
+        const size = await calculateSegmentsSize(segments);
+        await updatePlaylist(domain, uri, playlists[index].id, { size });
+      }
     }
 
     if (result.segments) {
-      const size = await calculateSegmentsSize(result.segments);
+      const tempSize = 'Calculating';
       const queueItem: SegmentsItem = {
         type: 'segments',
         name,
         format,
         uri,
-        size,
+        size: tempSize,
         progress: 0,
       };
 
       await addQueueItem(domain, queueItem);
+
+      // Calculate size
+      const size = await calculateSegmentsSize(result.segments);
+      await updateQueueItem(domain, queueItem.uri, { size });
     }
   }
 
@@ -137,20 +158,23 @@ async function setStaticQueueItem(
 
   if (!existingItem) {
     const { name } = parse(uri);
-    await updateHeaders(requestHeaders);
-    const response = await fetch(uri, { method: 'HEAD' });
-    const size = +(response.headers.get('Content-Length') || 0) || 'Unknown';
+    const tempSize = 'Calculating';
 
     const queueItem: StaticItem = {
       type: 'static',
       name,
       uri,
       format,
-      size,
+      size: tempSize,
       progress: 0,
     };
 
     await addQueueItem(domain, queueItem);
+
+    // Calculate size
+    await updateHeaders(requestHeaders);
+    const size = await calculateStaticSize(uri);
+    await updateQueueItem(domain, queueItem.uri, { size });
   }
 
   await setLoadingStatus(domain, false);

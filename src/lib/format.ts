@@ -1,5 +1,7 @@
-export function formatSize(bytes: number | 'Unknown', decimals = 0) {
-  if (bytes === 'Unknown') return 'Unknown';
+import type { ItemSize } from '~types';
+
+export function formatSize(bytes: ItemSize, decimals = 0) {
+  if (typeof bytes === 'string') return bytes;
   if (bytes === 0) return '0 B';
 
   const k = 1000;

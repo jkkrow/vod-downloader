@@ -2,6 +2,7 @@ import path from 'path';
 import { Parser } from 'm3u8-parser';
 import { parse } from 'mpd-parser';
 
+import { updatePlaylist } from '~background/storage';
 import type { Manifest, ParsedPlaylists, ParsedSegments } from '../types';
 import type { ParseResult } from '../types';
 
@@ -101,27 +102,16 @@ function formatManifest(
   return {};
 }
 
-export async function calculatePlaylistsSize(
+export async function getPlaylistSegments(
   playlists: ParsedPlaylists
-): Promise<(number | 'Unknown')[]> {
+): Promise<(ParsedSegments | 'Unknown')[]> {
   const manifestUris = playlists
     .filter((item) => item.uri)
     .map((item) => item.uri as string);
 
   if (!manifestUris.length) {
     // Handle manifests that has segments inside playlists
-    const totalSizes: (number | 'Unknown')[] = [];
-
-    for (const { segments } of playlists) {
-      if (segments) {
-        const size = await calculateSegmentsSize(segments);
-        totalSizes.push(size);
-      } else {
-        totalSizes.push('Unknown');
-      }
-    }
-
-    return totalSizes;
+    return playlists.map(({ segments }) => segments || 'Unknown');
   }
 
   const { ext } = path.parse(manifestUris[0]);
@@ -129,13 +119,7 @@ export async function calculatePlaylistsSize(
 
   if (format === 'cmfv') {
     // Handle cmaf formats
-    const responses = manifestUris.map((uri) => fetch(uri, { method: 'HEAD' }));
-    const datas = await Promise.all(responses);
-    const sizes = datas.map(
-      (data) => +(data.headers.get('Content-Length') || 0) || 'Unknown'
-    );
-
-    return sizes;
+    return manifestUris.map((uri) => [{ uri }]);
   }
 
   const responses = await Promise.all(manifestUris.map((uri) => fetch(uri)));
@@ -147,30 +131,49 @@ export async function calculatePlaylistsSize(
     manifests.map((manifest, i) => parser(manifestUris[i], manifest))
   );
 
-  const totalSizes = await Promise.all(
-    resultList.map(({ segments }) =>
-      segments ? calculateSegmentsSize(segments) : 'Unknown'
-    )
-  );
-
-  return totalSizes;
+  return resultList.map(({ segments }) => segments || 'Unknown');
 }
 
 export async function calculateSegmentsSize(
-  segments: ParsedSegments
+  segments: ParsedSegments | 'Unknown'
 ): Promise<number | 'Unknown'> {
   try {
-    const uris = segments.map((item) => item.uri);
-    const responses = uris.map((uri) => fetch(uri, { method: 'HEAD' }));
+    if (segments === 'Unknown') return segments;
 
-    const sizes = await Promise.all(responses);
-    const totalSize = sizes.reduce(
-      (prev, cur) => prev + +(cur.headers.get('Content-Length') || 0),
-      0
-    );
+    const uris = segments.map((item) => item.uri);
+    const uriChunks = chunkArray(uris, 100);
+    let totalSize = 0;
+
+    for (const chunk of uriChunks) {
+      const responses = chunk.map((uri) => fetch(uri, { method: 'HEAD' }));
+      const sizes = await Promise.all(responses);
+      totalSize += sizes.reduce((prev, cur) => {
+        const size = +(cur.headers.get('Content-Length') || 0);
+        if (!size) throw new Error('Unknown Size');
+        return prev + size;
+      }, 0);
+    }
 
     return totalSize || 'Unknown';
   } catch (error) {
     return 'Unknown';
   }
+}
+
+export async function calculateStaticSize(uri: string) {
+  const response = await fetch(uri, { method: 'HEAD' });
+  const size = +(response.headers.get('Content-Length') || 0) || 'Unknown';
+  return size;
+}
+
+export function chunkArray<T>(array: T[], chunkSize = 100) {
+  const result: T[][] = [];
+
+  if (!array.length) return result;
+
+  for (let i = 0; i < array.length; i += chunkSize) {
+    result.push(array.slice(i, i + chunkSize));
+  }
+
+  return result;
 }

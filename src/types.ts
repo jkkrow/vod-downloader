@@ -11,6 +11,12 @@ export type Activation = {
 
 export type Queue = (StaticItem | PlaylistsItem | SegmentsItem)[];
 export type QueueStatus = 'idle' | 'pending' | 'downloading' | 'completed';
+export type SupportedFormat = typeof SUPPORTED_FORMATS[number];
+export type DynamicFormat = typeof DYNAMIC_FORMATS[number];
+export type StaticFormat = typeof STATIC_FORMATS[number];
+export type ItemSize = number | 'Unknown' | 'Calculating';
+export type ItemBandwidth = number | 'Unknown';
+export type ItemResolution = number | 'Unknown';
 
 export interface QueueItem {
   type: 'static' | 'segments' | 'playlists';
@@ -21,23 +27,24 @@ export interface QueueItem {
 
 export interface StaticItem extends QueueItem {
   type: 'static';
-  size: number | 'Unknown';
+  size: ItemSize;
   progress: number;
 }
 
 export interface SegmentsItem extends QueueItem {
   type: 'segments';
-  size: number | 'Unknown';
+  size: ItemSize;
   progress: number;
 }
 
 export interface PlaylistsItem extends QueueItem {
   type: 'playlists';
   playlists: {
+    id: string;
     uri?: string;
-    size: number | 'Unknown';
-    bandwidth: number | 'Unknown';
-    resolution: number | 'Unknown';
+    size: ItemSize;
+    bandwidth: ItemBandwidth;
+    resolution: ItemResolution;
     progress: number;
   }[];
 }
@@ -50,18 +57,14 @@ export interface ParseResult {
 export type ParsedPlaylists = {
   uri?: string;
   segments?: Segment[];
-  resolution: number | 'Unknown';
-  bandwidth: number | 'Unknown';
+  bandwidth: ItemBandwidth;
+  resolution: ItemResolution;
 }[];
 
 export type ParsedSegments = {
   uri: string;
   duration?: number;
 }[];
-
-export type SupportedFormat = typeof SUPPORTED_FORMATS[number];
-export type DynamicFormat = typeof DYNAMIC_FORMATS[number];
-export type StaticFormat = typeof STATIC_FORMATS[number];
 
 export interface Manifest {
   allowCache: boolean;
