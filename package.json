@@ -7,9 +7,12 @@
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
-    "package": "plasmo package"
+    "package": "plasmo package",
+    "debug": "plasmo dev --verbose"
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.11.0",
+    "@ffmpeg/ffmpeg": "^0.11.6",
     "@plasmohq/messaging": "^0.1.1",
     "@plasmohq/storage": "^1.2.0",
     "async-mutex": "^0.4.0",
@@ -43,7 +46,11 @@
       "webRequest",
       "downloads",
       "declarativeNetRequest",
-      "declarativeNetRequestWithHostAccess"
-    ]
+      "declarativeNetRequestWithHostAccess",
+      "offscreen"
+    ],
+    "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+    }
   }
 }

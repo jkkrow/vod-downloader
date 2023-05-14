@@ -1,8 +1,7 @@
-import path from 'path';
 import { Parser } from 'm3u8-parser';
 import { parse } from 'mpd-parser';
 
-import { updatePlaylist } from '~background/storage';
+import { getFormat, chunkArray } from './util';
 import type { Manifest, ParsedPlaylists, ParsedSegments } from '../types';
 import type { ParseResult } from '../types';
 
@@ -114,8 +113,7 @@ export async function getPlaylistSegments(
     return playlists.map(({ segments }) => segments || 'Unknown');
   }
 
-  const { ext } = path.parse(manifestUris[0]);
-  const format = ext.replace('.', '');
+  const format = getFormat(manifestUris[0]);
 
   if (format === 'cmfv') {
     // Handle cmaf formats
@@ -164,16 +162,4 @@ export async function calculateStaticSize(uri: string) {
   const response = await fetch(uri, { method: 'HEAD' });
   const size = +(response.headers.get('Content-Length') || 0) || 'Unknown';
   return size;
-}
-
-export function chunkArray<T>(array: T[], chunkSize = 100) {
-  const result: T[][] = [];
-
-  if (!array.length) return result;
-
-  for (let i = 0; i < array.length; i += chunkSize) {
-    result.push(array.slice(i, i + chunkSize));
-  }
-
-  return result;
 }

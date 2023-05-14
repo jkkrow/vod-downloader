@@ -6,7 +6,8 @@
   "include": [
     ".plasmo/index.d.ts",
     "./**/*.ts",
-    "./**/*.tsx"
+    "./**/*.tsx",
+    "src/offscreen.js"
   ],
   "compilerOptions": {
     "paths": {
@@ -15,6 +16,7 @@
       ]
     },
     "baseUrl": ".",
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "ignoreDeprecations": "5.0"
   },
 }

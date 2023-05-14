@@ -9,7 +9,7 @@ import {
   updateQueueItem,
   updatePlaylist,
 } from './storage';
-import { getDomain } from '~lib/domain';
+import { getDomain, getFormat } from '~lib/util';
 import { updateHeaders } from '~lib/request-headers';
 import {
   parseHls,
@@ -38,8 +38,7 @@ chrome.storage.session.setAccessLevel({
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
   ({ url: uri, requestHeaders = [], tabId }) => {
-    const { ext } = parse(uri);
-    const format = ext.replace('.', '') as any;
+    const format = getFormat(uri);
 
     if (!SUPPORTED_FORMATS.includes(format) || tabId <= 0) {
       return;

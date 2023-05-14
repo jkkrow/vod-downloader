@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import Format from './Format';
 import Download from './Download';
 import Playlists from './Playlists';
@@ -9,6 +11,8 @@ interface QueueItemProps {
 }
 
 export default function QueueItem({ item }: QueueItemProps) {
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState('');
+
   return (
     <div className="flex flex-col py-4 mx-2 gap-4 border-b-[1px] border-primary last:border-b-0">
       <div className="flex items-center gap-4">
@@ -23,10 +27,13 @@ export default function QueueItem({ item }: QueueItemProps) {
             ) : null}
           </div>
         </div>
-        <Download uri={item.uri} />
+        <Download uri={item.uri} playlistId={selectedPlaylistId} />
       </div>
       {item.type === 'playlists' ? (
-        <Playlists playlists={item.playlists} />
+        <Playlists
+          playlists={item.playlists}
+          onSelect={setSelectedPlaylistId}
+        />
       ) : null}
     </div>
   );

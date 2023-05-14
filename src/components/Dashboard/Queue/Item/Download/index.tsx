@@ -1,12 +1,14 @@
+import { sendToBackground } from '@plasmohq/messaging';
 import DownloadIcon from 'react:~assets/icons/download.svg';
 
 interface DownloadProps {
   uri: string;
+  playlistId: string;
 }
 
-export default function Download({ uri }: DownloadProps) {
+export default function Download({ uri, playlistId }: DownloadProps) {
   const downloadHandler = () => {
-    console.log(uri);
+    sendToBackground({ name: 'download', body: { uri, playlistId } });
   };
 
   return (
