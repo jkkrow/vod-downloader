@@ -1,6 +1,6 @@
 {
   "name": "vod-downloader",
-  "displayName": "Vod downloader",
+  "displayName": "VOD Downloader",
   "version": "0.0.1",
   "description": "Downloads HLS and DASH video and converts to MP4 format",
   "author": "Joonku Kim",
@@ -11,8 +11,6 @@
     "debug": "plasmo dev --verbose"
   },
   "dependencies": {
-    "@ffmpeg/core": "^0.11.0",
-    "@ffmpeg/ffmpeg": "^0.11.6",
     "@plasmohq/messaging": "^0.1.1",
     "@plasmohq/storage": "^1.2.0",
     "async-mutex": "^0.4.0",
@@ -42,15 +40,11 @@
       "http://*/*"
     ],
     "permissions": [
-      "tabs",
-      "webRequest",
-      "downloads",
       "declarativeNetRequest",
-      "declarativeNetRequestWithHostAccess",
-      "offscreen"
-    ],
-    "content_security_policy": {
-      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
-    }
+      "tabs",
+      "downloads",
+      "webRequest",
+      "webNavigation"
+    ]
   }
 }

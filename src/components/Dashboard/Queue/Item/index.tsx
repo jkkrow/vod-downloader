@@ -3,8 +3,8 @@ import { useState } from 'react';
 import Format from './Format';
 import Download from './Download';
 import Playlists from './Playlists';
-import { formatSize } from '~lib/format';
-import type { StaticItem, SegmentsItem, PlaylistsItem } from '~types';
+import { formatSize } from '~lib/util';
+import type { StaticItem, SegmentsItem, PlaylistsItem } from '~types/queue';
 
 interface QueueItemProps {
   item: StaticItem | SegmentsItem | PlaylistsItem;

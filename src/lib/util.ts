@@ -1,15 +1,12 @@
 import { parse } from 'path';
 
-import { getActivation } from '~background/storage';
+import type { ItemSize } from '~types/queue';
 
 export async function getDomain(tabId: number) {
   const tab = await chrome.tabs.get(tabId);
   const domain = new URL(tab.url || '').origin;
 
-  const { on, blacklist } = await getActivation();
-  const isBlacklisted = blacklist.find((item) => item === domain);
-
-  return !on || isBlacklisted ? undefined : domain;
+  return domain;
 }
 
 export function getFormat(uri: string) {
@@ -29,4 +26,17 @@ export function chunkArray<T>(array: T[], chunkSize = 100) {
   }
 
   return result;
+}
+
+export function formatSize(bytes: ItemSize, decimals = 0) {
+  if (typeof bytes === 'string') return bytes;
+  if (bytes === 0) return '0 B';
+
+  const k = 1000;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }

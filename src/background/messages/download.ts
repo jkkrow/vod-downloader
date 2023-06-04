@@ -1,18 +1,15 @@
 import type { PlasmoMessaging } from '@plasmohq/messaging';
 
-import OFFSCREEN_DOCUMENT_PATH from 'url:~offscreen.html';
+import { downloadFile } from '~jobs/download';
 
 const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
-  if (!(await chrome.offscreen.hasDocument())) {
-    await chrome.offscreen.createDocument({
-      url: OFFSCREEN_DOCUMENT_PATH,
-      reasons: [chrome.offscreen.Reason.BLOBS],
-      justification: 'Download File',
-    });
-  }
+  // const { domain, uri, playlistId } = req.body;
 
-  const { uri, playlistId } = req.body;
-  await chrome.runtime.sendMessage({ uri, playlistId });
+  // downloadFile(domain, uri, playlistId);
+
+  const { url } = req.body;
+
+  chrome.downloads.download({ url });
 
   res.send('');
 };

@@ -1,55 +1,42 @@
 import { useStorage } from '@plasmohq/storage/hook';
-import {
-  createContext,
-  PropsWithChildren,
-  useState,
-  useCallback,
-  useEffect,
-  useMemo,
-} from 'react';
+import { createContext, PropsWithChildren, useMemo } from 'react';
 
-import { sessionStorage, localStorage } from '~background/storage';
-import { LOADING_KEY, ACTIVATION_KEY } from '~constant';
-import type { Queue, QueueStatus, Activation } from '~types';
+import { sessionStorage } from '~storage/session';
+import { QUEUE_KEY, LOADING_KEY, POPUP_KEY } from '~constants/storage';
+import type { Queue, QueueStatus } from '~types/queue';
+import type { Popup } from '~types/popup';
 
 export interface AppContextState {
-  activation: Activation;
   domain: string;
-  mode: 'alert' | 'dashboard';
   queue: Queue;
   loading: boolean;
   status: QueueStatus;
-  toggleMode: () => void;
 }
 
 const initialState: AppContextState = {
-  activation: { on: false, blacklist: [] },
   domain: '',
-  mode: 'alert',
   queue: [],
   loading: false,
   status: 'idle',
-  toggleMode: () => {},
 };
 
 export const AppContext = createContext(initialState);
 
 export function AppContextProvider({ children }: PropsWithChildren) {
-  const [mode, setMode] = useState<'alert' | 'dashboard'>('alert');
-  const [domain, setDomain] = useState(window.location.origin);
+  const tabId = +(new URLSearchParams(location.search).get('tabId') || '');
 
-  const [activation] = useStorage<Activation>(
-    { key: ACTIVATION_KEY, instance: localStorage },
-    initialState.activation
+  const [popup] = useStorage<Popup>(
+    { key: POPUP_KEY + tabId, instance: sessionStorage },
+    { windowId: 0, domain: '' }
   );
 
   const [queue] = useStorage<Queue>(
-    { key: domain, instance: sessionStorage },
+    { key: QUEUE_KEY + tabId, instance: sessionStorage },
     initialState.queue
   );
 
   const [loading] = useStorage<boolean>(
-    { key: domain + LOADING_KEY, instance: sessionStorage },
+    { key: LOADING_KEY + tabId, instance: sessionStorage },
     initialState.loading
   );
 
@@ -91,32 +78,13 @@ export function AppContextProvider({ children }: PropsWithChildren) {
     return status;
   }, [queue]);
 
-  useEffect(() => {
-    const updateDomainHandler = () => {
-      setDomain(window.location.origin);
-    };
-
-    window.addEventListener('popstate', updateDomainHandler);
-
-    return () => {
-      window.removeEventListener('popstate', updateDomainHandler);
-    };
-  }, []);
-
-  const toggleMode = useCallback(() => {
-    setMode((prev) => (prev === 'alert' ? 'dashboard' : 'alert'));
-  }, []);
-
   return (
     <AppContext.Provider
       value={{
-        activation,
-        domain,
-        mode,
+        domain: popup.domain,
         queue,
         loading,
         status,
-        toggleMode,
       }}
     >
       {children}

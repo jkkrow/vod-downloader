@@ -1,5 +1,9 @@
+import { useContext } from 'react';
 import { sendToBackground } from '@plasmohq/messaging';
+
 import DownloadIcon from 'react:~assets/icons/download.svg';
+import { AppContext } from '~context/AppContext';
+import { downloadFile } from '~jobs/download';
 
 interface DownloadProps {
   uri: string;
@@ -7,8 +11,11 @@ interface DownloadProps {
 }
 
 export default function Download({ uri, playlistId }: DownloadProps) {
+  const { domain } = useContext(AppContext);
+
   const downloadHandler = () => {
-    sendToBackground({ name: 'download', body: { uri, playlistId } });
+    // sendToBackground({ name: 'download', body: { domain, uri, playlistId } });
+    downloadFile(domain, uri, playlistId);
   };
 
   return (

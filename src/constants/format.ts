@@ -1,9 +1,28 @@
-export const STATIC_FORMATS = ['mp4', 'webm', 'ogg', 'ogv'] as const;
-export const DYNAMIC_FORMATS = ['m3u8', 'mpd'] as const;
-export const SUPPORTED_FORMATS = [
-  ...STATIC_FORMATS,
-  ...DYNAMIC_FORMATS,
+export const STATIC_FORMATS = [
+  // video
+  'mp4',
+  'webm',
+  'ogv',
+  'flv',
+  'avi',
+  'wmv',
+  'mov',
+  'mkv',
+  // audio
+  'mp3',
+  'aac',
+  'ogg',
+  'wma',
+  'wav',
+  'pcm',
 ] as const;
+
+export const DYNAMIC_FORMATS = ['m3u8', 'mpd'] as const;
+
+export const MEDIA_FORMATS = [...STATIC_FORMATS, ...DYNAMIC_FORMATS] as const;
+
+export const EXTRA_FORMATS = ['vtt', 'webvtt', 'srt'] as const;
+
 export const EXT_MAP = {
   mp4: 'video/mp4',
   m4v: 'video/mp4',
@@ -23,5 +42,3 @@ export const EXT_MAP = {
   flac: 'audio/flac',
   wav: 'audio/wav',
 } as const;
-export const ACTIVATION_KEY = 'activation';
-export const LOADING_KEY = 'loading';
