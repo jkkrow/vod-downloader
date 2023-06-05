@@ -7,7 +7,7 @@ export default function Queue() {
   const { queue } = useContext(AppContext);
 
   return (
-    <ul className="flex flex-col w-full max-h-64 mb-auto overflow-auto scrollbar-thin scrollbar-thumb-rounded-md scrollbar-thumb-secondary hover:scrollbar-thumb-primary active:scrollbar-thumb-secondary">
+    <ul className="flex flex-col w-full px-6 mb-auto overflow-auto scrollbar-thin scrollbar-thumb-rounded-md scrollbar-thumb-secondary hover:scrollbar-thumb-primary active:scrollbar-thumb-secondary">
       {queue.map((item) => (
         <QueueItem key={item.uri} item={item} />
       ))}

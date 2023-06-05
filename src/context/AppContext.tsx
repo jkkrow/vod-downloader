@@ -1,5 +1,5 @@
 import { useStorage } from '@plasmohq/storage/hook';
-import { createContext, PropsWithChildren, useMemo } from 'react';
+import { createContext, PropsWithChildren, useMemo, useState } from 'react';
 
 import { sessionStorage } from '~storage/session';
 import { QUEUE_KEY, LOADING_KEY, POPUP_KEY } from '~constants/storage';
@@ -7,6 +7,7 @@ import type { Queue, QueueStatus } from '~types/queue';
 import type { Popup } from '~types/popup';
 
 export interface AppContextState {
+  tabId: number;
   domain: string;
   queue: Queue;
   loading: boolean;
@@ -14,6 +15,7 @@ export interface AppContextState {
 }
 
 const initialState: AppContextState = {
+  tabId: 0,
   domain: '',
   queue: [],
   loading: false,
@@ -23,7 +25,9 @@ const initialState: AppContextState = {
 export const AppContext = createContext(initialState);
 
 export function AppContextProvider({ children }: PropsWithChildren) {
-  const tabId = +(new URLSearchParams(location.search).get('tabId') || '');
+  const [tabId] = useState(
+    +(new URLSearchParams(location.search).get('tabId') || '')
+  );
 
   const [popup] = useStorage<Popup>(
     { key: POPUP_KEY + tabId, instance: sessionStorage },
@@ -81,6 +85,7 @@ export function AppContextProvider({ children }: PropsWithChildren) {
   return (
     <AppContext.Provider
       value={{
+        tabId,
         domain: popup.domain,
         queue,
         loading,

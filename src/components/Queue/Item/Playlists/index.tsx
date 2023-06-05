@@ -32,9 +32,9 @@ export default function Playlists({ playlists, onSelect }: PlaylistsProps) {
     <ul className="flex flex-wrap gap-2">
       {sortedPlaylists.map((playlist) => (
         <li
-          className="border-2 rounded-md border-secondary px-2 py-1 aria-selected:border-primary"
+          className="border-2 rounded-md border-secondary px-2 py-1 data-[selected=true]:border-primary hover:bg-hover transition-colors"
           key={playlist.uri || playlist.bandwidth}
-          aria-selected={selectedPlaylistId === playlist.id}
+          data-selected={selectedPlaylistId === playlist.id}
           onClick={selectPlaylistHandler(playlist.id)}
         >
           <button className="text-left">

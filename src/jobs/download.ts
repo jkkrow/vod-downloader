@@ -1,37 +1,28 @@
-import { sendToBackground } from '@plasmohq/messaging';
-
-import { SessionStorage } from '~storage/session';
+import { Queue } from '~storage/session/Queue';
 import { parseHls, parseDash } from '../lib/parse';
 import { getFormat, chunkArray } from '../lib/util';
 import { DYNAMIC_FORMATS, STATIC_FORMATS } from '~constants/format';
 import type { PlaylistsItem } from '~types/queue';
 
-export async function downloadFile(
-  domain: string,
-  uri: string,
-  playlistId?: string
-) {
+export function downloadFile(tabId: number, uri: string, playlistId?: string) {
   const format = getFormat(uri);
-
-  if (STATIC_FORMATS.includes(format)) {
-    await downloadStaticFile(uri);
-    return;
-  }
 
   console.log(uri, playlistId);
 
+  if (STATIC_FORMATS.includes(format)) {
+    return downloadStaticFile(tabId, uri);
+  }
+
   if (DYNAMIC_FORMATS.includes(format) && playlistId) {
-    await donwloadPlaylist(domain, uri, playlistId);
-    return;
+    return donwloadPlaylist(tabId, uri, playlistId);
   }
 
   if (DYNAMIC_FORMATS.includes(format) && !playlistId) {
-    await downloadSegments(domain, uri);
-    return;
+    return downloadSegments(tabId, uri);
   }
 }
 
-export async function downloadStaticFile(uri: string) {
+export async function downloadStaticFile(tabId: number, uri: string) {
   // const response = await fetch(uri);
   // const file = await response.blob();
   // console.log(file);
@@ -39,22 +30,22 @@ export async function downloadStaticFile(uri: string) {
   // sendToBackground({ name: 'download', body: url });
 }
 
-export async function downloadSegments(domain: string, uri: string) {
+export async function downloadSegments(tabId: number, uri: string) {
   const format = getFormat(uri);
   const parser = format === 'm3u8' ? parseHls : parseDash;
 
-  const { queue } = await SessionStorage.get(domain);
+  const { items } = await Queue.get(tabId);
 
-  console.log(queue);
+  console.log(items);
 }
 
 export async function donwloadPlaylist(
-  domain: string,
+  tabId: number,
   uri: string,
   playlistId: string
 ) {
-  const { queue } = await SessionStorage.get(domain);
-  const item = queue.find((item: PlaylistsItem) => item.uri === uri) as
+  const { items } = await Queue.get(tabId);
+  const item = items.find((item: PlaylistsItem) => item.uri === uri) as
     | PlaylistsItem
     | undefined;
 

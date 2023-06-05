@@ -1,5 +1,4 @@
 import { useContext } from 'react';
-import { sendToBackground } from '@plasmohq/messaging';
 
 import DownloadIcon from 'react:~assets/icons/download.svg';
 import { AppContext } from '~context/AppContext';
@@ -8,22 +7,23 @@ import { downloadFile } from '~jobs/download';
 interface DownloadProps {
   uri: string;
   playlistId: string;
+  disabled: boolean;
 }
 
-export default function Download({ uri, playlistId }: DownloadProps) {
-  const { domain } = useContext(AppContext);
+export default function Download({ uri, playlistId, disabled }: DownloadProps) {
+  const { tabId } = useContext(AppContext);
 
   const downloadHandler = () => {
-    // sendToBackground({ name: 'download', body: { domain, uri, playlistId } });
-    downloadFile(domain, uri, playlistId);
+    downloadFile(tabId, uri, playlistId);
   };
 
-  return (
+  return !disabled ? (
     <button
-      className="flex-shrink-0 w-12 h-12 p-2 ml-auto"
+      className="relative flex-shrink-0 w-12 h-12 p-2 ml-auto bg-inversed text-inversed rounded-md hover:bg-hover-inversed transition-colors"
+      disabled={disabled}
       onClick={downloadHandler}
     >
       <DownloadIcon />
     </button>
-  );
+  ) : null;
 }

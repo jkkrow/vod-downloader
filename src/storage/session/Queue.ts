@@ -55,4 +55,9 @@ export class Queue {
     const key = this.key.replace(QUEUE_KEY, LOADING_KEY);
     await sessionStorage.set(key, status);
   }
+
+  async remove() {
+    this.items = [];
+    await sessionStorage.set(this.key, this.items);
+  }
 }
