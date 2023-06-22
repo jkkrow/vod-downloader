@@ -1,24 +1,27 @@
 import { parse } from 'path';
 import { Mutex } from 'async-mutex';
-import { v4 as uuidv4 } from 'uuid';
 
 import { Queue } from '~storage/session/Queue';
+import { Popup } from '~storage/session/Popup';
 import { getDomain, getFormat } from '~lib/util';
 import { updateHeaders } from '~lib/request-headers';
-import { parseHls, parseDash } from '~lib/parse';
+import { parseManifest } from '~lib/parse';
 import {
   getPlaylistSegments,
   calculateSegmentsSize,
   calculateStaticSize,
 } from '~lib/calculate-size';
-import { STATIC_FORMATS, DYNAMIC_FORMATS } from '~constants/format';
+import {
+  STATIC_FORMATS,
+  DYNAMIC_FORMATS,
+  EXTRA_FORMATS,
+} from '~constants/format';
 import type {
   StaticFormat,
   DynamicFormat,
   StaticItem,
   SegmentsItem,
   PlaylistsItem,
-  ItemSize,
 } from '~types/queue';
 
 const mutex = new Mutex();
@@ -27,10 +30,11 @@ export function observe({
   url: uri,
   requestHeaders = [],
   tabId,
+  initiator,
 }: chrome.webRequest.WebRequestHeadersDetails) {
   const format = getFormat(uri);
 
-  if (tabId <= 0) {
+  if (tabId <= 0 || !initiator || initiator.startsWith('chrome-extension://')) {
     return;
   }
 
@@ -41,6 +45,10 @@ export function observe({
   if (DYNAMIC_FORMATS.includes(format)) {
     setDynamicQueueItem(uri, requestHeaders, tabId, format);
   }
+
+  if (EXTRA_FORMATS.includes(format)) {
+    setStaticQueueItem(uri, requestHeaders, tabId, format);
+  }
 }
 
 async function setDynamicQueueItem(
@@ -49,15 +57,10 @@ async function setDynamicQueueItem(
   tabId: number,
   format: DynamicFormat
 ) {
-  const domain = await getDomain(tabId);
-
-  if (!domain) return;
   if (mutex.isLocked()) await mutex.waitForUnlock();
 
   const release = await mutex.acquire();
   const queue = await Queue.get(tabId);
-
-  await queue.updateLoading(true);
 
   const existingItem = queue.items.find((item) => {
     const { name: itemName, dir: itemDir } = parse(item.uri);
@@ -65,67 +68,63 @@ async function setDynamicQueueItem(
     return itemDir === uriDir && uriName.includes(itemName);
   });
 
-  if (!existingItem) {
-    const { name } = parse(uri);
-    await updateHeaders(requestHeaders);
-    const response = await fetch(uri);
-    const manifest = await response.text();
+  if (existingItem) return release();
 
-    const parser = format === 'm3u8' ? parseHls : parseDash;
-    const result = await parser(uri, manifest);
+  // Add Queue Item
+  await queue.updateLoading(true);
+  await updateHeaders(requestHeaders);
 
-    if (result.playlists) {
-      const tempSizes: ItemSize[] = result.playlists.map(() => 'Calculating');
-      const playlists = result.playlists.map((playlist, i) => ({
-        id: uuidv4(),
-        uri: playlist.uri,
-        resolution: playlist.resolution,
-        bandwidth: playlist.bandwidth,
-        size: tempSizes[i],
-        progress: 0,
-      }));
-      const queueItem: PlaylistsItem = {
-        type: 'playlists',
-        name,
-        format,
-        uri,
-        playlists,
-        domain,
-        requestHeaders,
-      };
+  const { name } = parse(uri);
+  const domain = await getDomain(tabId);
+  const result = await parseManifest(uri);
 
-      await queue.addItem(queueItem);
+  if (result.playlists) {
+    const playlists = result.playlists.map((playlist) => ({
+      uri: playlist.uri,
+      resolution: playlist.resolution,
+      bandwidth: playlist.bandwidth,
+      size: 'Calculating' as const,
+      progress: 0,
+    }));
 
-      // Calculate size
-      const playlistsSegments = await getPlaylistSegments(result.playlists);
+    const queueItem: PlaylistsItem = {
+      type: 'playlists',
+      name,
+      format,
+      uri,
+      playlists,
+      domain,
+      requestHeaders,
+    };
 
-      for (const [index, segments] of playlistsSegments.entries()) {
-        const size = await calculateSegmentsSize(segments);
-        await queue.updatePlaylist(uri, playlists[index].id, {
-          size,
-        });
-      }
+    await queue.addItem(queueItem);
+
+    // Calculate size
+    const playlistsSegments = await getPlaylistSegments(result.playlists);
+
+    for (const [index, segments] of playlistsSegments.entries()) {
+      const size = await calculateSegmentsSize(segments);
+      await queue.updatePlaylist(uri, index, { size });
     }
+  }
 
-    if (result.segments) {
-      const tempSize = 'Calculating';
-      const queueItem: SegmentsItem = {
-        type: 'segments',
-        name,
-        format,
-        uri,
-        size: tempSize,
-        progress: 0,
-        domain,
-        requestHeaders,
-      };
+  if (result.segments) {
+    const queueItem: SegmentsItem = {
+      type: 'segments',
+      name,
+      format,
+      uri,
+      size: 'Calculating',
+      progress: 0,
+      domain,
+      requestHeaders,
+    };
 
-      await queue.addItem(queueItem);
+    await queue.addItem(queueItem);
 
-      // Calculate size
-      const size = await calculateSegmentsSize(result.segments);
-      await queue.updateItem(queueItem.uri, { size });
-    }
+    // Calculate size
+    const size = await calculateSegmentsSize(result.segments);
+    await queue.updateItem(queueItem.uri, { size });
   }
 
   await queue.updateLoading(false);
@@ -138,40 +137,38 @@ async function setStaticQueueItem(
   tabId: number,
   format: StaticFormat
 ) {
-  const domain = await getDomain(tabId);
-
-  if (!domain) return;
   if (mutex.isLocked()) await mutex.waitForUnlock();
 
   const release = await mutex.acquire();
   const queue = await Queue.get(tabId);
 
-  await queue.updateLoading(true);
-
   const existingItem = queue.items.find((item) => item.uri === uri);
 
-  if (!existingItem) {
-    const { name } = parse(uri);
-    const tempSize = 'Calculating';
+  if (existingItem) return release();
 
-    const queueItem: StaticItem = {
-      type: 'static',
-      name,
-      uri,
-      format,
-      size: tempSize,
-      progress: 0,
-      domain,
-      requestHeaders,
-    };
+  await queue.updateLoading(true);
+  await updateHeaders(requestHeaders);
 
-    await queue.addItem(queueItem);
+  const { name } = parse(uri);
+  const domain = await getDomain(tabId);
 
-    // Calculate size
-    await updateHeaders(requestHeaders);
-    const size = await calculateStaticSize(uri);
-    await queue.updateItem(queueItem.uri, { size });
-  }
+  const queueItem: StaticItem = {
+    type: 'static',
+    name,
+    uri,
+    format,
+    size: 'Calculating',
+    progress: 0,
+    domain,
+    requestHeaders,
+  };
+
+  await queue.addItem(queueItem);
+
+  // Calculate size
+  await updateHeaders(requestHeaders);
+  const size = await calculateStaticSize(uri);
+  await queue.updateItem(queueItem.uri, { size });
 
   await queue.updateLoading(false);
   release();

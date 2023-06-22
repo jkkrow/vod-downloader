@@ -37,10 +37,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 
 // Manage Popup
 chrome.action.onClicked.addListener(openPopup);
-
 chrome.tabs.onRemoved.addListener(closePopup);
 
 // Manage Navigation
 chrome.webNavigation.onCommitted.addListener(removeQueue);
-
 chrome.webNavigation.onBeforeNavigate.addListener(updateDomain);

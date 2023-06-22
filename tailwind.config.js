@@ -24,6 +24,7 @@ module.exports = {
         tertiary: colors.neutral[700],
         inversed: colors.neutral[900],
         hover: colors.neutral[300],
+        disabled: colors.neutral[400],
         'hover-inversed': colors.neutral[700],
       }),
       backgroundColor: ({ colors }) => ({
@@ -32,6 +33,7 @@ module.exports = {
         tertiary: colors.neutral[300],
         inversed: colors.neutral[100],
         hover: colors.neutral[700],
+        disabled: colors.neutral[600],
         'hover-inversed': colors.neutral[300],
       }),
     },

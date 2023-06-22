@@ -31,16 +31,14 @@ export class Queue {
 
   async updatePlaylist(
     uri: string,
-    playlistId: string,
+    index: number,
     updates: Partial<PlaylistsItem['playlists'][number]>
   ) {
     const matchedItem = this.items.find((item) => item.uri === uri);
 
     if (!matchedItem || !(matchedItem as PlaylistsItem).playlists) return;
 
-    const matchedPlaylist = (matchedItem as PlaylistsItem).playlists.find(
-      (playlist) => playlist.id === playlistId
-    );
+    const matchedPlaylist = (matchedItem as PlaylistsItem).playlists[index];
 
     if (!matchedPlaylist) return;
 

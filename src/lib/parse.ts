@@ -1,38 +1,31 @@
-import { Parser } from 'm3u8-parser';
-import { parse } from 'mpd-parser';
+import { Parser as HlsParser } from 'm3u8-parser';
+import { parse as DashParser } from 'mpd-parser';
 
+import { getFormat } from '~lib/util';
 import type { Manifest } from '../types/manifest';
 import type { ParseResult } from '../types/queue';
 
-export async function parseHls(
-  hlsUri: string,
-  manifest: string
-): Promise<ParseResult> {
-  try {
-    const parser = new Parser();
+export async function parseManifest(uri: string) {
+  const response = await fetch(uri, { cache: 'no-cache' });
+  const manifest = await response.text();
+  const format = getFormat(uri);
+
+  if (format === 'm3u8') {
+    // HLS
+    const parser = new HlsParser();
     parser.push(manifest);
     parser.end();
 
     const parsedManifest: Manifest = parser.manifest;
-    const baseUri = generateBaseUri(hlsUri);
+    const baseUri = generateBaseUri(uri);
 
     return formatManifest(parsedManifest, baseUri);
-  } catch (error) {
-    return {};
-  }
-}
-
-export async function parseDash(
-  dashUri: string,
-  manifest: string
-): Promise<ParseResult> {
-  try {
-    const parsedManifest = parse(manifest, { manifestUri: dashUri });
-    const baseUri = generateBaseUri(dashUri);
+  } else {
+    // DASH
+    const parsedManifest = DashParser(manifest, { manifestUri: uri });
+    const baseUri = generateBaseUri(uri);
 
     return formatManifest(parsedManifest, baseUri);
-  } catch (error) {
-    return {};
   }
 }
 
@@ -79,7 +72,23 @@ function formatManifest(
       };
     });
 
-    return { playlists };
+    const sortedPlaylists = playlists.sort((a, b) => {
+      if (
+        typeof a.resolution === 'number' &&
+        typeof b.resolution === 'number' &&
+        a.resolution !== b.resolution
+      ) {
+        return b.resolution - a.resolution;
+      }
+
+      if (typeof a.bandwidth === 'number' && typeof b.bandwidth === 'number') {
+        return b.bandwidth - a.bandwidth;
+      }
+
+      return 0;
+    });
+
+    return { playlists: sortedPlaylists };
   }
 
   if (parsedManifest.segments) {

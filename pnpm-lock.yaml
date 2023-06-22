@@ -8,6 +8,7 @@ specifiers:
   '@types/node': 18.11.18
   '@types/react': 18.0.27
   '@types/react-dom': 18.0.10
+  '@types/wicg-file-system-access': ^2020.9.6
   async-mutex: ^0.4.0
   autoprefixer: ^10.4.13
   framer-motion: ^10.0.2
@@ -40,6 +41,7 @@ devDependencies:
   '@types/node': 18.11.18
   '@types/react': 18.0.27
   '@types/react-dom': 18.0.10
+  '@types/wicg-file-system-access': 2020.9.6
   autoprefixer: 10.4.13_postcss@8.4.21
   postcss: 8.4.21
   tailwind-scrollbar: 3.0.0_tailwindcss@3.2.7
@@ -2116,6 +2118,10 @@ packages:
     resolution: {integrity: sha512-If4EcaHzYTqcbNMp/FdReVdRmLL/Te42ivnJII551bYjhX19bWem5m14FERCqdJA732OloGuxCRvLBvcMGsn4A==}
     dev: false
 
+  /@types/wicg-file-system-access/2020.9.6:
+    resolution: {integrity: sha512-6hogE75Hl2Ov/jgp8ZhDaGmIF/q3J07GtXf8nCJCwKTHq7971po5+DId7grft09zG7plBwpF6ZU0yx9Du4/e1A==}
+    dev: true
+
   /@videojs/vhs-utils/3.0.5:
     resolution: {integrity: sha512-PKVgdo8/GReqdx512F+ombhS+Bzogiofy1LgAj4tN8PfdBx3HSS7V5WfJotKTqtOWGwVfSWsrYN/t09/DSryrw==}
     engines: {node: '>=8', npm: '>=5'}
@@ -3740,7 +3746,7 @@ packages:
     dependencies:
       universalify: 2.0.0
     optionalDependencies:
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
     dev: false
 
   /keyv/4.5.2:

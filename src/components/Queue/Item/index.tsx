@@ -11,7 +11,7 @@ interface QueueItemProps {
 }
 
 export default function QueueItem({ item }: QueueItemProps) {
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState('');
+  const [selectedPlaylistIndex, setSelectedPlaylistIndex] = useState(0);
 
   return (
     <div className="flex flex-col py-6 mx-2 gap-4 border-b-[1px] border-primary last:border-b-0">
@@ -27,16 +27,12 @@ export default function QueueItem({ item }: QueueItemProps) {
             ) : null}
           </div>
         </div>
-        <Download
-          uri={item.uri}
-          playlistId={selectedPlaylistId}
-          disabled={item.type === 'playlists' && !selectedPlaylistId}
-        />
+        <Download {...item} playlistIndex={selectedPlaylistIndex} />
       </div>
       {item.type === 'playlists' ? (
         <Playlists
           playlists={item.playlists}
-          onSelect={setSelectedPlaylistId}
+          onSelect={setSelectedPlaylistIndex}
         />
       ) : null}
     </div>

@@ -2,28 +2,30 @@ import { useContext } from 'react';
 
 import DownloadIcon from 'react:~assets/icons/download.svg';
 import { AppContext } from '~context/AppContext';
-import { downloadFile } from '~jobs/download';
+import { Downloader } from '~jobs/Downloader';
+import type { QueueItem } from '~types/queue';
 
-interface DownloadProps {
-  uri: string;
-  playlistId: string;
-  disabled: boolean;
+interface DownloadProps extends QueueItem {
+  playlistIndex: number;
 }
 
-export default function Download({ uri, playlistId, disabled }: DownloadProps) {
-  const { tabId } = useContext(AppContext);
+export default function Download({ playlistIndex, ...rest }: DownloadProps) {
+  const { tabId, loading } = useContext(AppContext);
 
-  const downloadHandler = () => {
-    downloadFile(tabId, uri, playlistId);
+  const downloadHandler = async () => {
+    const downloader = new Downloader(rest, playlistIndex);
+
+    await downloader.prepare();
+    await downloader.download();
   };
 
-  return !disabled ? (
+  return (
     <button
-      className="relative flex-shrink-0 w-12 h-12 p-2 ml-auto bg-inversed text-inversed rounded-md hover:bg-hover-inversed transition-colors"
-      disabled={disabled}
+      className="relative flex-shrink-0 w-12 h-12 p-2 ml-auto bg-inversed text-inversed rounded-md hover:[&:not(:disabled)]:bg-hover-inversed disabled:cursor-not-allowed disabled:bg-disabled transition-colors"
+      disabled={loading}
       onClick={downloadHandler}
     >
       <DownloadIcon />
     </button>
-  ) : null;
+  );
 }

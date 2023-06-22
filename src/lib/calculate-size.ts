@@ -1,10 +1,10 @@
-import { parseHls, parseDash } from './parse';
+import { parseManifest } from './parse';
 import { getFormat, chunkArray } from './util';
-import type { ParsedPlaylists, ParsedSegments } from '../types/queue';
+import type { ParsedPlaylist, ParsedSegment } from '../types/queue';
 
 export async function getPlaylistSegments(
-  playlists: ParsedPlaylists
-): Promise<(ParsedSegments | 'Unknown')[]> {
+  playlists: ParsedPlaylist[]
+): Promise<(ParsedSegment[] | 'Unknown')[]> {
   const manifestUris = playlists
     .filter((item) => item.uri)
     .map((item) => item.uri as string);
@@ -21,20 +21,15 @@ export async function getPlaylistSegments(
     return manifestUris.map((uri) => [{ uri }]);
   }
 
-  const responses = await Promise.all(manifestUris.map((uri) => fetch(uri)));
-  const manifests = await Promise.all(responses.map((res) => res.text()));
-
-  const parser = format === 'm3u8' ? parseHls : parseDash;
-
   const resultList = await Promise.all(
-    manifests.map((manifest, i) => parser(manifestUris[i], manifest))
+    manifestUris.map((uri) => parseManifest(uri))
   );
 
   return resultList.map(({ segments }) => segments || 'Unknown');
 }
 
 export async function calculateSegmentsSize(
-  segments: ParsedSegments | 'Unknown'
+  segments: ParsedSegment[] | 'Unknown'
 ): Promise<number | 'Unknown'> {
   try {
     if (segments === 'Unknown') return segments;

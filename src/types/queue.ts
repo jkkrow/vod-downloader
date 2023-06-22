@@ -38,7 +38,6 @@ export interface SegmentsItem extends QueueItem {
 export interface PlaylistsItem extends QueueItem {
   type: 'playlists';
   playlists: {
-    id: string;
     uri?: string;
     size: ItemSize;
     bandwidth: ItemBandwidth;
@@ -48,18 +47,19 @@ export interface PlaylistsItem extends QueueItem {
 }
 
 export interface ParseResult {
-  playlists?: ParsedPlaylists;
-  segments?: ParsedSegments;
+  playlists?: ParsedPlaylist[];
+  segments?: ParsedSegment[];
 }
 
-export type ParsedPlaylists = {
+export type ParsedPlaylist = {
   uri?: string;
   segments?: Segment[];
   bandwidth: ItemBandwidth;
   resolution: ItemResolution;
-}[];
+};
 
-export type ParsedSegments = {
+export type ParsedSegment = {
   uri: string;
   duration?: number;
-}[];
+  range?: { start: number; end: number };
+};
