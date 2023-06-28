@@ -1,4 +1,6 @@
 export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
+  // TODO: Change mechanism
+
   const requestHeaders = headers.map(({ name, value }) => ({
     header: name,
     operation: chrome.declarativeNetRequest.HeaderOperation.SET,

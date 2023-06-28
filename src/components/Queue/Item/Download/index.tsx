@@ -10,13 +10,14 @@ interface DownloadProps extends QueueItem {
 }
 
 export default function Download({ playlistIndex, ...rest }: DownloadProps) {
-  const { tabId, loading } = useContext(AppContext);
+  const { loading } = useContext(AppContext);
 
   const downloadHandler = async () => {
     const downloader = new Downloader(rest, playlistIndex);
 
     await downloader.prepare();
     await downloader.download();
+    await downloader.finish();
   };
 
   return (

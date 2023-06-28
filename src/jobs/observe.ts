@@ -34,7 +34,7 @@ export function observe({
 }: chrome.webRequest.WebRequestHeadersDetails) {
   const format = getFormat(uri);
 
-  if (tabId <= 0 || !initiator || initiator.startsWith('chrome-extension://')) {
+  if (tabId <= 0 || !initiator || initiator.startsWith('chrome-extension')) {
     return;
   }
 
@@ -84,7 +84,6 @@ async function setDynamicQueueItem(
       resolution: playlist.resolution,
       bandwidth: playlist.bandwidth,
       size: 'Calculating' as const,
-      progress: 0,
     }));
 
     const queueItem: PlaylistsItem = {
@@ -115,7 +114,6 @@ async function setDynamicQueueItem(
       format,
       uri,
       size: 'Calculating',
-      progress: 0,
       domain,
       requestHeaders,
     };
@@ -158,7 +156,6 @@ async function setStaticQueueItem(
     uri,
     format,
     size: 'Calculating',
-    progress: 0,
     domain,
     requestHeaders,
   };

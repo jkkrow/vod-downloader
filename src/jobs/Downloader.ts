@@ -1,68 +1,68 @@
-import { Queue } from '~storage/session/Queue';
 import { parseManifest } from '../lib/parse';
 import { updateHeaders } from '~lib/request-headers';
 import { DYNAMIC_FORMATS, EXT_MAP } from '~constants/format';
 import type { QueueItem } from '~types/queue';
 import type { ParsedSegment } from '~types/queue';
+import type { MultiThreadContext } from '~types/download';
 
 export class Downloader {
-  private sizes: Map<number, number>;
-  private controller: AbortController;
-  private segments: ParsedSegment[];
+  private sizes: Map<number, number> = new Map();
+  private segments: ParsedSegment[] = [];
   private writer: FileSystemWritableFileStream;
-  private position: number;
-  private activeThreads: number;
-  private threads: number;
-  private threadSize: number;
-  private progress: { size: number; current: number; total: number };
+  private controller = new AbortController();
+  private position = 0;
+  private activeThreads = 0;
+  private threads = 1;
+  private threadSize = 3 * 1024 * 1024; // 3MB
+  private progress = { size: 0, current: 0, total: 0 };
 
-  constructor(private item: QueueItem, private playlistIndex?: number) {
-    this.sizes = new Map();
-    this.controller = new AbortController();
-    this.segments = [];
-    this.position = 0;
-    this.activeThreads = 0;
-    this.threads = 1;
-    this.threadSize = 3 * 1024 * 1024; // 3MB
-    this.progress = { size: 0, current: 0, total: 0 };
-  }
-
-  async download() {
-    console.log('1', this);
-
-    await new Promise<void>((resolve, reject) =>
-      this.processSegment(resolve, reject)
-    );
-
-    return this.writer.close();
-  }
+  constructor(private item: QueueItem, private playlistIndex?: number) {}
 
   async prepare(threads?: number) {
-    console.log(this.item.requestHeaders);
-
     await updateHeaders(this.item.requestHeaders);
-    await this.parse();
+    const parsePromise = this.parse();
+
+    const file = await window.showSaveFilePicker({
+      suggestedName: this.item.name,
+      types: [{ accept: this.defineFileType() }],
+    });
+
+    await parsePromise;
 
     if (!this.segments.length) {
       throw new Error('Segment not found');
     }
 
-    const mime = EXT_MAP[this.item.format] || 'application/octet-stream';
-    const file = await window.showSaveFilePicker({
-      suggestedName: this.item.name,
-      types: [
-        {
-          accept: DYNAMIC_FORMATS.includes(this.item.format as any)
-            ? { 'video/mp4': ['.mp4'] }
-            : { [mime]: [`.${this.item.format}`] },
-        },
-      ],
-    });
-
     const writer = await file.createWritable();
     this.writer = writer;
     this.threads = Math.min(threads || 1, 5);
     this.progress = { size: 0, current: 0, total: this.segments.length };
+    window.onbeforeunload = () => 'Downloading';
+  }
+
+  async download() {
+    try {
+      if (!this.segments.length) return;
+      if (this.position && !this.sizes.has(this.position - 1)) return;
+
+      this.position++;
+
+      const segment = this.segments.shift()!;
+      const currentPosition = this.position - 1;
+      const next = this.downloadNextSegment();
+
+      await this.writeStream(segment, currentPosition, next);
+      await this.download();
+    } catch (error) {
+      this.controller.abort();
+      await this.finish();
+      throw error;
+    }
+  }
+
+  async finish() {
+    await this.writer.close();
+    window.onbeforeunload = null;
   }
 
   private async parse() {
@@ -93,44 +93,13 @@ export class Downloader {
     this.segments = playlistResult.segments || [];
   }
 
-  private async processSegment(
-    resolve: () => void,
-    reject: (reason: string) => void
-  ) {
-    try {
-      console.log('Totalsize', this.sizes);
-
-      if (!this.segments.length) return resolve();
-      if (this.position && this.sizes.get(this.position - 1) === undefined)
-        return;
-
-      this.position++;
-
-      const segment = this.segments.shift()!;
-      const currentPosition = this.position - 1;
-      const trigger = this.processNextSegment(resolve, reject);
-
-      await this.writeStream(segment, currentPosition, trigger);
-      console.log('--------------NEXT SEGMENT-------------');
-      this.processSegment(resolve, reject);
-    } catch (error) {
-      reject(error);
-    }
-  }
-
-  private processNextSegment(
-    resolve: () => void,
-    reject: (reason: string) => void
-  ) {
+  private downloadNextSegment() {
     let triggered = false;
 
     return () => {
-      console.log('14. Inside settled', triggered);
-
       if (triggered) return;
       if (this.segments.length && this.getThreadCapacity()) {
-        console.log('15. Start Next');
-        this.processSegment(resolve, reject);
+        this.download();
       }
 
       triggered = true;
@@ -140,7 +109,7 @@ export class Downloader {
   private async writeStream(
     segment: ParsedSegment,
     position: number,
-    next: () => void
+    next?: () => void
   ) {
     const request = new Request(segment.uri, {
       method: 'GET',
@@ -149,8 +118,6 @@ export class Downloader {
       credentials: 'include',
     });
 
-    console.log('2. Position:', position);
-
     if (segment.range) {
       const { start, end } = segment.range;
       request.headers.append('Range', `bytes=${start}-${end}`);
@@ -158,9 +125,6 @@ export class Downloader {
 
     this.activeThreads++;
     const response = await fetch(request);
-
-    console.log('3. Response', response);
-    console.log('4. Segment', segment);
 
     if (!response.ok || !response.body) {
       throw new Error('Download failed with status ' + response.status);
@@ -172,91 +136,53 @@ export class Downloader {
 
     const size = +(response.headers.get('Content-Length') || 0);
     const type = response.headers.get('Accept-Ranges');
-    const writableStream = this.getWritableStream(segment, position);
 
-    if (!this.sizes.has(position)) {
-      console.log('5. Setting size', size);
+    const writableStream = this.getWritableStream(segment, position);
+    const monitorStream = this.getMonitorStream(position);
+    const limitStream = this.getLimitStream(this.threadSize);
+
+    const recordSize = !!size && !this.sizes.has(position);
+    const useMultiThread = !!size && type === 'bytes' && size > this.threadSize;
+
+    if (recordSize) {
       this.sizes.set(position, size);
     }
 
-    console.log('6. Size', size);
-    console.log('7. Type', type);
-
-    console.log('8. Size bigger than Treadsize', size > this.threadSize);
-
-    if (size && type === 'bytes' && size > this.threadSize) {
+    if (useMultiThread) {
       return new Promise<void>((resolve, reject) => {
-        let start = segment.range?.start || 0;
-        let actives = 1;
-        const end = segment.range?.end || size - 1;
-        const ranges: number[] = [];
-
-        const multiThreadStream = () => {
-          console.log('11. More - ActiveThreads', this.activeThreads);
-
-          const capacity = this.getThreadCapacity();
-
-          console.log('12. Capacity', capacity);
-
-          for (let i = 0; i < capacity; i++) {
-            if (!ranges.length) break;
-
-            actives++;
-            const rangeStart = ranges.shift()!;
-            const rangeEnd = Math.min(rangeStart + this.threadSize - 1, end);
-
-            this.writeStream(
-              { ...segment, range: { start: rangeStart, end: rangeEnd } },
-              position,
-              () => {}
-            ).then(() => {
-              actives--;
-              multiThreadStream();
-            });
-          }
-
-          if (actives === 0 && ranges.length === 0) {
-            resolve();
-          }
-
-          console.log('13. Settled');
-          next();
+        const context: MultiThreadContext = {
+          segment,
+          position,
+          start: segment.range?.start || 0,
+          end: segment.range?.end || size - 1,
+          actives: 1,
+          ranges: [],
+          next,
+          resolve,
+          reject,
         };
 
         while (true) {
-          start += this.threadSize;
-
-          if (start >= (segment.range?.end || size)) {
-            break;
-          }
-
-          ranges.push(start);
+          context.start += this.threadSize;
+          if (context.start >= (segment.range?.end || size)) break;
+          context.ranges.push(context.start);
         }
-
-        const limitStream = this.getLimitStream(this.threadSize);
-        const monitorStream = this.getMonitorStream(position);
-
-        console.log('9. Multithreading same position', position);
 
         response
           .body!.pipeThrough(limitStream)
           .pipeThrough(monitorStream)
           .pipeTo(writableStream)
           .then(() => {
-            actives--;
+            context.actives--;
             this.activeThreads--;
-            multiThreadStream();
-          });
+            this.multiThreadStream(context);
+          })
+          .catch(context.reject);
 
-        multiThreadStream();
+        this.multiThreadStream(context);
       });
     } else {
-      console.log('9. ActiveThreads', this.activeThreads);
-      console.log('10. Else block: Settled');
-
-      next();
-      const monitorStream = this.getMonitorStream(position);
-
+      next?.();
       return response.body
         .pipeThrough(monitorStream)
         .pipeTo(writableStream)
@@ -266,9 +192,35 @@ export class Downloader {
     }
   }
 
+  private multiThreadStream(context: MultiThreadContext) {
+    const capacity = this.getThreadCapacity();
+
+    for (let i = 0; i < capacity; i++) {
+      if (!context.ranges.length) break;
+
+      context.actives++;
+
+      const start = context.ranges.shift()!;
+      const end = Math.min(context.start + this.threadSize - 1, context.end);
+      const updatedSegment = { ...context.segment, range: { start, end } };
+
+      this.writeStream(updatedSegment, context.position)
+        .then(() => {
+          context.actives--;
+          this.multiThreadStream(context);
+        })
+        .catch(context.reject);
+    }
+
+    if (context.actives === 0 && context.ranges.length === 0) {
+      context.resolve();
+    }
+
+    context.next?.();
+  }
+
   private getWritableStream(segment: ParsedSegment, position: number) {
     let offset = this.getOffset(segment, position);
-    console.log('Offset', offset);
 
     const stream = new WritableStream({
       write: async (chunk: ArrayBuffer) => {
@@ -341,5 +293,13 @@ export class Downloader {
 
   private getThreadCapacity() {
     return this.threads - this.activeThreads;
+  }
+
+  private defineFileType(): Record<string, string | string[]> {
+    const mime = EXT_MAP[this.item.format] || 'application/octet-stream';
+    const ext = `.${this.item.format}`;
+    const isDynamicFormat = DYNAMIC_FORMATS.includes(this.item.format as any);
+
+    return isDynamicFormat ? { 'video/mp4': ['.mp4'] } : { [mime]: [ext] };
   }
 }

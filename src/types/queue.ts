@@ -26,13 +26,11 @@ export interface QueueItem {
 export interface StaticItem extends QueueItem {
   type: 'static';
   size: ItemSize;
-  progress: number;
 }
 
 export interface SegmentsItem extends QueueItem {
   type: 'segments';
   size: ItemSize;
-  progress: number;
 }
 
 export interface PlaylistsItem extends QueueItem {
@@ -42,7 +40,6 @@ export interface PlaylistsItem extends QueueItem {
     size: ItemSize;
     bandwidth: ItemBandwidth;
     resolution: ItemResolution;
-    progress: number;
   }[];
 }
 
