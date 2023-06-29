@@ -3,17 +3,18 @@ import { useContext } from 'react';
 import DownloadIcon from 'react:~assets/icons/download.svg';
 import { AppContext } from '~context/AppContext';
 import { Downloader } from '~jobs/Downloader';
-import type { QueueItem } from '~types/queue';
+import type { DiscoveryItem } from '~types/discovery';
 
-interface DownloadProps extends QueueItem {
+interface ButtonProps {
+  item: DiscoveryItem;
   playlistIndex: number;
 }
 
-export default function Download({ playlistIndex, ...rest }: DownloadProps) {
+export default function Button({ playlistIndex, item }: ButtonProps) {
   const { loading } = useContext(AppContext);
 
   const downloadHandler = async () => {
-    const downloader = new Downloader(rest, playlistIndex);
+    const downloader = new Downloader(item, playlistIndex);
 
     await downloader.prepare();
     await downloader.download();

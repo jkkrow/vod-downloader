@@ -1,8 +1,8 @@
 import { parseManifest } from '../lib/parse';
 import { updateHeaders } from '~lib/request-headers';
 import { DYNAMIC_FORMATS, EXT_MAP } from '~constants/format';
-import type { QueueItem } from '~types/queue';
-import type { ParsedSegment } from '~types/queue';
+import type { DiscoveryItem } from '~types/discovery';
+import type { ParsedSegment } from '~types/discovery';
 import type { MultiThreadContext } from '~types/download';
 
 export class Downloader {
@@ -16,7 +16,7 @@ export class Downloader {
   private threadSize = 3 * 1024 * 1024; // 3MB
   private progress = { size: 0, current: 0, total: 0 };
 
-  constructor(private item: QueueItem, private playlistIndex?: number) {}
+  constructor(private item: DiscoveryItem, private playlistIndex?: number) {}
 
   async prepare(threads?: number) {
     await updateHeaders(this.item.requestHeaders);
@@ -148,40 +148,7 @@ export class Downloader {
       this.sizes.set(position, size);
     }
 
-    if (useMultiThread) {
-      return new Promise<void>((resolve, reject) => {
-        const context: MultiThreadContext = {
-          segment,
-          position,
-          start: segment.range?.start || 0,
-          end: segment.range?.end || size - 1,
-          actives: 1,
-          ranges: [],
-          next,
-          resolve,
-          reject,
-        };
-
-        while (true) {
-          context.start += this.threadSize;
-          if (context.start >= (segment.range?.end || size)) break;
-          context.ranges.push(context.start);
-        }
-
-        response
-          .body!.pipeThrough(limitStream)
-          .pipeThrough(monitorStream)
-          .pipeTo(writableStream)
-          .then(() => {
-            context.actives--;
-            this.activeThreads--;
-            this.multiThreadStream(context);
-          })
-          .catch(context.reject);
-
-        this.multiThreadStream(context);
-      });
-    } else {
+    if (!useMultiThread) {
       next?.();
       return response.body
         .pipeThrough(monitorStream)
@@ -190,6 +157,39 @@ export class Downloader {
           this.activeThreads--;
         });
     }
+
+    return new Promise<void>((resolve, reject) => {
+      const context: MultiThreadContext = {
+        segment,
+        position,
+        start: segment.range?.start || 0,
+        end: segment.range?.end || size - 1,
+        actives: 1,
+        ranges: [],
+        next,
+        resolve,
+        reject,
+      };
+
+      while (true) {
+        context.start += this.threadSize;
+        if (context.start >= (segment.range?.end || size)) break;
+        context.ranges.push(context.start);
+      }
+
+      response
+        .body!.pipeThrough(limitStream)
+        .pipeThrough(monitorStream)
+        .pipeTo(writableStream)
+        .then(() => {
+          context.actives--;
+          this.activeThreads--;
+          this.multiThreadStream(context);
+        })
+        .catch(context.reject);
+
+      this.multiThreadStream(context);
+    });
   }
 
   private multiThreadStream(context: MultiThreadContext) {
@@ -222,7 +222,7 @@ export class Downloader {
   private getWritableStream(segment: ParsedSegment, position: number) {
     let offset = this.getOffset(segment, position);
 
-    const stream = new WritableStream({
+    return new WritableStream({
       write: async (chunk: ArrayBuffer) => {
         await this.writer.write({
           type: 'write',
@@ -233,14 +233,12 @@ export class Downloader {
         offset += chunk.byteLength;
       },
     });
-
-    return stream;
   }
 
   private getLimitStream(threadSize: number) {
     let fetched = 0;
 
-    const stream = new TransformStream({
+    return new TransformStream({
       transform: (
         chunk: ArrayBuffer,
         controller: TransformStreamDefaultController<ArrayBuffer>
@@ -255,12 +253,10 @@ export class Downloader {
         }
       },
     });
-
-    return stream;
   }
 
   private getMonitorStream(position: number) {
-    const stream = new TransformStream({
+    return new TransformStream({
       transform: (
         chunk: ArrayBuffer,
         controller: TransformStreamDefaultController<ArrayBuffer>
@@ -271,8 +267,6 @@ export class Downloader {
         return controller.enqueue(chunk);
       },
     });
-
-    return stream;
   }
 
   private getOffset(segment: ParsedSegment, position: number) {

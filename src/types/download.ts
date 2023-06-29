@@ -1,4 +1,6 @@
-import type { ParsedSegment } from './queue';
+import type { ParsedSegment } from './discovery';
+
+export interface DownloadQueueItem {}
 
 export interface MultiThreadContext {
   segment: ParsedSegment;

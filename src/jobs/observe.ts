@@ -1,8 +1,7 @@
 import { parse } from 'path';
 import { Mutex } from 'async-mutex';
 
-import { Queue } from '~storage/session/Queue';
-import { Popup } from '~storage/session/Popup';
+import { Discovery } from '~storage/session/Discovery';
 import { getDomain, getFormat } from '~lib/util';
 import { updateHeaders } from '~lib/request-headers';
 import { parseManifest } from '~lib/parse';
@@ -22,7 +21,7 @@ import type {
   StaticItem,
   SegmentsItem,
   PlaylistsItem,
-} from '~types/queue';
+} from '~types/discovery';
 
 const mutex = new Mutex();
 
@@ -39,19 +38,19 @@ export function observe({
   }
 
   if (STATIC_FORMATS.includes(format)) {
-    setStaticQueueItem(uri, requestHeaders, tabId, format);
+    setStaticItem(uri, requestHeaders, tabId, format);
   }
 
   if (DYNAMIC_FORMATS.includes(format)) {
-    setDynamicQueueItem(uri, requestHeaders, tabId, format);
+    setDynamicItem(uri, requestHeaders, tabId, format);
   }
 
   if (EXTRA_FORMATS.includes(format)) {
-    setStaticQueueItem(uri, requestHeaders, tabId, format);
+    setStaticItem(uri, requestHeaders, tabId, format);
   }
 }
 
-async function setDynamicQueueItem(
+async function setDynamicItem(
   uri: string,
   requestHeaders: chrome.webRequest.HttpHeader[],
   tabId: number,
@@ -60,9 +59,9 @@ async function setDynamicQueueItem(
   if (mutex.isLocked()) await mutex.waitForUnlock();
 
   const release = await mutex.acquire();
-  const queue = await Queue.get(tabId);
+  const discovery = await Discovery.get(tabId);
 
-  const existingItem = queue.items.find((item) => {
+  const existingItem = discovery.items.find((item) => {
     const { name: itemName, dir: itemDir } = parse(item.uri);
     const { name: uriName, dir: uriDir } = parse(uri);
     return itemDir === uriDir && uriName.includes(itemName);
@@ -70,8 +69,8 @@ async function setDynamicQueueItem(
 
   if (existingItem) return release();
 
-  // Add Queue Item
-  await queue.updateLoading(true);
+  // Add Discovery Item
+  await discovery.updateLoading(true);
   await updateHeaders(requestHeaders);
 
   const { name } = parse(uri);
@@ -86,7 +85,7 @@ async function setDynamicQueueItem(
       size: 'Calculating' as const,
     }));
 
-    const queueItem: PlaylistsItem = {
+    const discoveryItem: PlaylistsItem = {
       type: 'playlists',
       name,
       format,
@@ -96,19 +95,19 @@ async function setDynamicQueueItem(
       requestHeaders,
     };
 
-    await queue.addItem(queueItem);
+    await discovery.addItem(discoveryItem);
 
     // Calculate size
     const playlistsSegments = await getPlaylistSegments(result.playlists);
 
     for (const [index, segments] of playlistsSegments.entries()) {
       const size = await calculateSegmentsSize(segments);
-      await queue.updatePlaylist(uri, index, { size });
+      await discovery.updatePlaylist(uri, index, { size });
     }
   }
 
   if (result.segments) {
-    const queueItem: SegmentsItem = {
+    const discoveryItem: SegmentsItem = {
       type: 'segments',
       name,
       format,
@@ -118,18 +117,18 @@ async function setDynamicQueueItem(
       requestHeaders,
     };
 
-    await queue.addItem(queueItem);
+    await discovery.addItem(discoveryItem);
 
     // Calculate size
     const size = await calculateSegmentsSize(result.segments);
-    await queue.updateItem(queueItem.uri, { size });
+    await discovery.updateItem(discoveryItem.uri, { size });
   }
 
-  await queue.updateLoading(false);
+  await discovery.updateLoading(false);
   release();
 }
 
-async function setStaticQueueItem(
+async function setStaticItem(
   uri: string,
   requestHeaders: chrome.webRequest.HttpHeader[],
   tabId: number,
@@ -138,19 +137,19 @@ async function setStaticQueueItem(
   if (mutex.isLocked()) await mutex.waitForUnlock();
 
   const release = await mutex.acquire();
-  const queue = await Queue.get(tabId);
+  const discovery = await Discovery.get(tabId);
 
-  const existingItem = queue.items.find((item) => item.uri === uri);
+  const existingItem = discovery.items.find((item) => item.uri === uri);
 
   if (existingItem) return release();
 
-  await queue.updateLoading(true);
+  await discovery.updateLoading(true);
   await updateHeaders(requestHeaders);
 
   const { name } = parse(uri);
   const domain = await getDomain(tabId);
 
-  const queueItem: StaticItem = {
+  const discoveryItem: StaticItem = {
     type: 'static',
     name,
     uri,
@@ -160,13 +159,13 @@ async function setStaticQueueItem(
     requestHeaders,
   };
 
-  await queue.addItem(queueItem);
+  await discovery.addItem(discoveryItem);
 
   // Calculate size
   await updateHeaders(requestHeaders);
   const size = await calculateStaticSize(uri);
-  await queue.updateItem(queueItem.uri, { size });
+  await discovery.updateItem(discoveryItem.uri, { size });
 
-  await queue.updateLoading(false);
+  await discovery.updateLoading(false);
   release();
 }

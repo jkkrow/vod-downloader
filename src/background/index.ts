@@ -1,5 +1,5 @@
 import { observe } from '~jobs/observe';
-import { openPopup, closePopup, updateDomain, removeQueue } from '~jobs/popup';
+import { openPopup, closePopup, reloadPopup, navigatePopup } from '~jobs/popup';
 import { MEDIA_FORMATS, EXTRA_FORMATS } from '~constants/format';
 
 // Setup Storage
@@ -40,5 +40,5 @@ chrome.action.onClicked.addListener(openPopup);
 chrome.tabs.onRemoved.addListener(closePopup);
 
 // Manage Navigation
-chrome.webNavigation.onCommitted.addListener(removeQueue);
-chrome.webNavigation.onBeforeNavigate.addListener(updateDomain);
+chrome.webNavigation.onCommitted.addListener(reloadPopup);
+chrome.webNavigation.onBeforeNavigate.addListener(navigatePopup);

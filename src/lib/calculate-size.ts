@@ -1,6 +1,6 @@
 import { parseManifest } from './parse';
 import { getFormat, chunkArray } from './util';
-import type { ParsedPlaylist, ParsedSegment } from '../types/queue';
+import type { ParsedPlaylist, ParsedSegment } from '../types/discovery';
 
 export async function getPlaylistSegments(
   playlists: ParsedPlaylist[]

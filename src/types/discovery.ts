@@ -5,8 +5,7 @@ import type {
   STATIC_FORMATS,
 } from '~constants/format';
 
-export type Queue = (StaticItem | PlaylistsItem | SegmentsItem)[];
-export type QueueStatus = 'idle' | 'pending' | 'downloading' | 'completed';
+export type DiscoveryItem = StaticItem | PlaylistsItem | SegmentsItem;
 export type SupportedFormat = (typeof MEDIA_FORMATS)[number];
 export type DynamicFormat = (typeof DYNAMIC_FORMATS)[number];
 export type StaticFormat = (typeof STATIC_FORMATS)[number];
@@ -14,7 +13,7 @@ export type ItemSize = number | 'Unknown' | 'Calculating';
 export type ItemBandwidth = number | 'Unknown';
 export type ItemResolution = number | 'Unknown';
 
-export interface QueueItem {
+interface Item {
   type: 'static' | 'segments' | 'playlists';
   name: string;
   uri: string;
@@ -23,17 +22,17 @@ export interface QueueItem {
   requestHeaders: chrome.webRequest.HttpHeader[];
 }
 
-export interface StaticItem extends QueueItem {
+export interface StaticItem extends Item {
   type: 'static';
   size: ItemSize;
 }
 
-export interface SegmentsItem extends QueueItem {
+export interface SegmentsItem extends Item {
   type: 'segments';
   size: ItemSize;
 }
 
-export interface PlaylistsItem extends QueueItem {
+export interface PlaylistsItem extends Item {
   type: 'playlists';
   playlists: {
     uri?: string;

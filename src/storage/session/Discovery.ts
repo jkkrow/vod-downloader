@@ -1,23 +1,23 @@
 import { sessionStorage } from '.';
-import { QUEUE_KEY, LOADING_KEY } from '~constants/storage';
-import type { Queue as Items, PlaylistsItem } from '~types/queue';
+import { DISCOVERY_KEY, LOADING_KEY } from '~constants/storage';
+import type { DiscoveryItem, PlaylistsItem } from '~types/discovery';
 
-export class Queue {
-  constructor(public key: string, public items: Items) {}
+export class Discovery {
+  constructor(public key: string, public items: DiscoveryItem[]) {}
 
   static async get(tabId: number) {
-    const key = QUEUE_KEY + tabId;
-    const items = (await sessionStorage.get<Items>(key)) || [];
+    const key = DISCOVERY_KEY + tabId;
+    const items = (await sessionStorage.get<DiscoveryItem[]>(key)) || [];
 
-    return new Queue(key, items);
+    return new Discovery(key, items);
   }
 
-  async addItem(item: Items[number]) {
+  async addItem(item: DiscoveryItem) {
     this.items.push(item);
     await sessionStorage.set(this.key, this.items);
   }
 
-  async updateItem(uri: string, updates: Partial<Items[number]>) {
+  async updateItem(uri: string, updates: Partial<DiscoveryItem>) {
     const matchedItem = this.items.find((item) => item.uri === uri);
 
     if (!matchedItem) return;
@@ -50,7 +50,7 @@ export class Queue {
   }
 
   async updateLoading(status: boolean) {
-    const key = this.key.replace(QUEUE_KEY, LOADING_KEY);
+    const key = this.key.replace(DISCOVERY_KEY, LOADING_KEY);
     await sessionStorage.set(key, status);
   }
 

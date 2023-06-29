@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { formatSize } from '~lib/util';
-import type { PlaylistsItem } from '~types/queue';
+import type { PlaylistsItem } from '~types/discovery';
 
 interface PlaylistsProps {
   playlists: PlaylistsItem['playlists'];

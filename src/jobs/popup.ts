@@ -1,4 +1,4 @@
-import { Queue } from '~storage/session/Queue';
+import { Discovery } from '~storage/session/Discovery';
 import { Popup } from '~storage/session/Popup';
 import { Options } from '~storage/local/Options';
 
@@ -15,7 +15,7 @@ export async function openPopup({ id: tabId }: chrome.tabs.Tab) {
 
   let popupWindow: chrome.windows.Window;
   const createOptions: chrome.windows.CreateData = {
-    url: `tabs/dashboard.html?tabId=${tabId}`,
+    url: `tabs/Dashboard.html?tabId=${tabId}`,
     type: 'popup',
     width: props.popup.width || 800,
     height: props.popup.height || 500,
@@ -68,7 +68,21 @@ export async function closePopup(tabId: number) {
   await chrome.windows.remove(popup.info.windowId);
 }
 
-export async function updateDomain({
+export async function reloadPopup({
+  tabId,
+  transitionType,
+}: chrome.webNavigation.WebNavigationTransitionCallbackDetails) {
+  if (transitionType !== 'reload') return;
+
+  const popup = await Popup.get(tabId);
+
+  if (!popup) return;
+
+  const discovery = await Discovery.get(tabId);
+  await discovery.remove();
+}
+
+export async function navigatePopup({
   tabId,
   frameType,
   url,
@@ -81,18 +95,4 @@ export async function updateDomain({
   if (!popup || popup.info.domain === domain) return;
 
   await popup.update({ domain });
-}
-
-export async function removeQueue({
-  tabId,
-  transitionType,
-}: chrome.webNavigation.WebNavigationTransitionCallbackDetails) {
-  if (transitionType !== 'reload') return;
-
-  const popup = await Popup.get(tabId);
-
-  if (!popup) return;
-
-  const queue = await Queue.get(tabId);
-  await queue.remove();
 }

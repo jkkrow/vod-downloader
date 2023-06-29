@@ -1,6 +1,6 @@
 import { parse } from 'path';
 
-import type { ItemSize } from '~types/queue';
+import type { ItemSize } from '~types/discovery';
 
 export async function getDomain(tabId: number) {
   const tab = await chrome.tabs.get(tabId);

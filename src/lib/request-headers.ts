@@ -24,8 +24,8 @@ export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
     },
   ];
 
-  const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
-  await chrome.declarativeNetRequest.updateDynamicRules({
+  const existingRules = await chrome.declarativeNetRequest.getSessionRules();
+  await chrome.declarativeNetRequest.updateSessionRules({
     removeRuleIds: existingRules.map((rule) => rule.id),
     addRules: rules,
   });
