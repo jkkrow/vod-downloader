@@ -11,10 +11,10 @@ interface ButtonProps {
 }
 
 export default function Button({ playlistIndex, item }: ButtonProps) {
-  const { loading } = useContext(AppContext);
+  const { tabId, loading } = useContext(AppContext);
 
   const downloadHandler = async () => {
-    const downloader = new Downloader(item, playlistIndex);
+    const downloader = new Downloader(tabId, item, playlistIndex);
 
     await downloader.prepare();
     await downloader.download();

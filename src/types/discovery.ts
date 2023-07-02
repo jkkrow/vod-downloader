@@ -5,7 +5,6 @@ import type {
   STATIC_FORMATS,
 } from '~constants/format';
 
-export type DiscoveryItem = StaticItem | PlaylistsItem | SegmentsItem;
 export type SupportedFormat = (typeof MEDIA_FORMATS)[number];
 export type DynamicFormat = (typeof DYNAMIC_FORMATS)[number];
 export type StaticFormat = (typeof STATIC_FORMATS)[number];
@@ -13,33 +12,22 @@ export type ItemSize = number | 'Unknown' | 'Calculating';
 export type ItemBandwidth = number | 'Unknown';
 export type ItemResolution = number | 'Unknown';
 
-interface Item {
+export interface DiscoveryItem {
   type: 'static' | 'segments' | 'playlists';
   name: string;
   uri: string;
   format: SupportedFormat;
   domain: string;
   requestHeaders: chrome.webRequest.HttpHeader[];
+  size?: ItemSize;
+  playlists?: ItemPlaylist[];
 }
 
-export interface StaticItem extends Item {
-  type: 'static';
+export interface ItemPlaylist {
+  uri?: string;
   size: ItemSize;
-}
-
-export interface SegmentsItem extends Item {
-  type: 'segments';
-  size: ItemSize;
-}
-
-export interface PlaylistsItem extends Item {
-  type: 'playlists';
-  playlists: {
-    uri?: string;
-    size: ItemSize;
-    bandwidth: ItemBandwidth;
-    resolution: ItemResolution;
-  }[];
+  bandwidth: ItemBandwidth;
+  resolution: ItemResolution;
 }
 
 export interface ParseResult {

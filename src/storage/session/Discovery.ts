@@ -1,6 +1,6 @@
 import { sessionStorage } from '.';
 import { DISCOVERY_KEY, LOADING_KEY } from '~constants/storage';
-import type { DiscoveryItem, PlaylistsItem } from '~types/discovery';
+import type { DiscoveryItem, ItemPlaylist } from '~types/discovery';
 
 export class Discovery {
   constructor(public key: string, public items: DiscoveryItem[]) {}
@@ -32,13 +32,13 @@ export class Discovery {
   async updatePlaylist(
     uri: string,
     index: number,
-    updates: Partial<PlaylistsItem['playlists'][number]>
+    updates: Partial<ItemPlaylist>
   ) {
     const matchedItem = this.items.find((item) => item.uri === uri);
 
-    if (!matchedItem || !(matchedItem as PlaylistsItem).playlists) return;
+    if (!matchedItem || !(matchedItem as DiscoveryItem).playlists) return;
 
-    const matchedPlaylist = (matchedItem as PlaylistsItem).playlists[index];
+    const matchedPlaylist = (matchedItem as DiscoveryItem).playlists?.[index];
 
     if (!matchedPlaylist) return;
 

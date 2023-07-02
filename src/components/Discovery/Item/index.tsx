@@ -22,7 +22,7 @@ export default function DiscoveryItem({ item }: DiscoveryItemProps) {
             {item.name}
           </div>
           <div className="flex gap-2 text-xs">
-            {item.type !== 'playlists' ? (
+            {item.size !== undefined ? (
               <div>size: {formatSize(item.size)}</div>
             ) : null}
           </div>
@@ -31,7 +31,7 @@ export default function DiscoveryItem({ item }: DiscoveryItemProps) {
       </div>
       {item.type === 'playlists' ? (
         <Playlists
-          playlists={item.playlists}
+          playlists={item.playlists || []}
           onSelect={setSelectedPlaylistIndex}
         />
       ) : null}

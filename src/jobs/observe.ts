@@ -18,9 +18,7 @@ import {
 import type {
   StaticFormat,
   DynamicFormat,
-  StaticItem,
-  SegmentsItem,
-  PlaylistsItem,
+  DiscoveryItem,
 } from '~types/discovery';
 
 const mutex = new Mutex();
@@ -71,10 +69,10 @@ async function setDynamicItem(
 
   // Add Discovery Item
   await discovery.updateLoading(true);
-  await updateHeaders(requestHeaders);
-
-  const { name } = parse(uri);
   const domain = await getDomain(tabId);
+  const { name } = parse(uri);
+
+  await updateHeaders(uri, requestHeaders);
   const result = await parseManifest(uri);
 
   if (result.playlists) {
@@ -85,7 +83,7 @@ async function setDynamicItem(
       size: 'Calculating' as const,
     }));
 
-    const discoveryItem: PlaylistsItem = {
+    const discoveryItem: DiscoveryItem = {
       type: 'playlists',
       name,
       format,
@@ -107,7 +105,7 @@ async function setDynamicItem(
   }
 
   if (result.segments) {
-    const discoveryItem: SegmentsItem = {
+    const discoveryItem: DiscoveryItem = {
       type: 'segments',
       name,
       format,
@@ -144,12 +142,12 @@ async function setStaticItem(
   if (existingItem) return release();
 
   await discovery.updateLoading(true);
-  await updateHeaders(requestHeaders);
-
-  const { name } = parse(uri);
   const domain = await getDomain(tabId);
+  const { name } = parse(uri);
 
-  const discoveryItem: StaticItem = {
+  await updateHeaders(uri, requestHeaders);
+
+  const discoveryItem: DiscoveryItem = {
     type: 'static',
     name,
     uri,
@@ -162,7 +160,6 @@ async function setStaticItem(
   await discovery.addItem(discoveryItem);
 
   // Calculate size
-  await updateHeaders(requestHeaders);
   const size = await calculateStaticSize(uri);
   await discovery.updateItem(discoveryItem.uri, { size });
 

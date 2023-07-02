@@ -1,5 +1,17 @@
-export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
-  // TODO: Change mechanism
+export async function updateHeaders(
+  uri: string,
+  headers: chrome.webRequest.HttpHeader[]
+) {
+  const existingRules = await chrome.declarativeNetRequest.getSessionRules();
+  const { origin } = new URL(uri);
+
+  const ruleOnSameResource = existingRules.find((rule) =>
+    rule.condition.urlFilter?.startsWith(origin)
+  );
+
+  if (ruleOnSameResource) {
+    return;
+  }
 
   const requestHeaders = headers.map(({ name, value }) => ({
     header: name,
@@ -9,14 +21,13 @@ export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
 
   const rules: chrome.declarativeNetRequest.Rule[] = [
     {
-      id: 1,
+      id: +new Date().getTime().toString().slice(4),
       action: {
         type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
         requestHeaders,
       },
       condition: {
-        domains: [chrome.runtime.id],
-        urlFilter: '*',
+        urlFilter: `${origin}*`,
         resourceTypes: [
           chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST,
         ],
@@ -24,9 +35,15 @@ export async function updateHeaders(headers: chrome.webRequest.HttpHeader[]) {
     },
   ];
 
+  await chrome.declarativeNetRequest.updateSessionRules({
+    addRules: rules,
+  });
+}
+
+export async function clearHeaders() {
+  // Triggered when queue is empty
   const existingRules = await chrome.declarativeNetRequest.getSessionRules();
   await chrome.declarativeNetRequest.updateSessionRules({
     removeRuleIds: existingRules.map((rule) => rule.id),
-    addRules: rules,
   });
 }

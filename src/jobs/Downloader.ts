@@ -16,10 +16,14 @@ export class Downloader {
   private threadSize = 3 * 1024 * 1024; // 3MB
   private progress = { size: 0, current: 0, total: 0 };
 
-  constructor(private item: DiscoveryItem, private playlistIndex?: number) {}
+  constructor(
+    private tabId: number,
+    private item: DiscoveryItem,
+    private playlistIndex?: number
+  ) {}
 
   async prepare(threads?: number) {
-    await updateHeaders(this.item.requestHeaders);
+    await updateHeaders(this.item.uri, this.item.requestHeaders);
     const parsePromise = this.parse();
 
     const file = await window.showSaveFilePicker({

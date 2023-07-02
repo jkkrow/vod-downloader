@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
 import { formatSize } from '~lib/util';
-import type { PlaylistsItem } from '~types/discovery';
+import type { ItemPlaylist } from '~types/discovery';
 
 interface PlaylistsProps {
-  playlists: PlaylistsItem['playlists'];
+  playlists: ItemPlaylist[];
   onSelect: (index: number) => void;
 }
 
