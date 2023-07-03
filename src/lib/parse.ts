@@ -1,16 +1,15 @@
 import { Parser as HlsParser } from 'm3u8-parser';
 import { parse as DashParser } from 'mpd-parser';
 
-import { getFormat } from '~lib/util';
+import { extractFormat } from './util';
 import type { Manifest } from '../types/manifest';
 import type { ParseResult } from '../types/discovery';
 
 export async function parseManifest(uri: string) {
-  const response = await fetch(uri, { cache: 'no-cache' });
+  const response = await fetch(uri);
   const manifest = await response.text();
-  const format = getFormat(uri);
 
-  if (format === 'm3u8') {
+  if (extractFormat(uri) === 'm3u8') {
     // HLS
     const parser = new HlsParser();
     parser.push(manifest);

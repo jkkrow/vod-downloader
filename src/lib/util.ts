@@ -1,19 +1,15 @@
-import { parse } from 'path';
-
 import type { ItemSize } from '~types/discovery';
 
-export async function getDomain(tabId: number) {
-  const tab = await chrome.tabs.get(tabId);
-  const domain = new URL(tab.url || '').origin;
-
-  return domain;
+export function extractFormat(uri: string) {
+  const { pathname } = new URL(uri);
+  return pathname.split('.').pop();
 }
 
-export function getFormat(uri: string) {
-  const { ext } = parse(uri);
-  const format = ext.replace('.', '') as any;
-
-  return format;
+export function checkFormat<T extends string>(
+  list: ReadonlyArray<T>,
+  value: string
+): value is T {
+  return list.some((item) => item === value);
 }
 
 export function chunkArray<T>(array: T[], chunkSize = 100) {

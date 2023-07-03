@@ -1,15 +1,19 @@
-import { observe } from '~jobs/observe';
-import { openPopup, closePopup, reloadPopup, navigatePopup } from '~jobs/popup';
+import { Observer } from '~jobs/Observer';
+import { PopupManager } from '~jobs/PopupManager';
 import { MEDIA_FORMATS, EXTRA_FORMATS } from '~constants/format';
+
+// Job Handlers
+const observer = new Observer();
+const popupManager = new PopupManager();
 
 // Setup Storage
 chrome.storage.session.setAccessLevel({
   accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS',
 });
 
-// Observe File
+// Observe File Requests
 chrome.webRequest.onBeforeSendHeaders.addListener(
-  observe,
+  observer.observe,
   {
     urls: ['*://*/*'],
     types: ['media'],
@@ -18,7 +22,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 );
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
-  observe,
+  observer.observe,
   {
     urls: MEDIA_FORMATS.map((format) => `*://*/*.${format}*`),
     types: ['xmlhttprequest'],
@@ -27,7 +31,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 );
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
-  observe,
+  observer.observe,
   {
     urls: EXTRA_FORMATS.map((format) => `*://*/*.${format}*`),
     types: ['xmlhttprequest', 'other'],
@@ -36,9 +40,9 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 );
 
 // Manage Popup
-chrome.action.onClicked.addListener(openPopup);
-chrome.tabs.onRemoved.addListener(closePopup);
+chrome.action.onClicked.addListener(popupManager.open);
+chrome.tabs.onRemoved.addListener(popupManager.close);
 
 // Manage Navigation
-chrome.webNavigation.onCommitted.addListener(reloadPopup);
-chrome.webNavigation.onBeforeNavigate.addListener(navigatePopup);
+chrome.webNavigation.onCommitted.addListener(popupManager.reload);
+chrome.webNavigation.onBeforeNavigate.addListener(popupManager.navigate);

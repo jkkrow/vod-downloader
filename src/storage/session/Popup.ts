@@ -1,5 +1,4 @@
 import { sessionStorage } from '.';
-import { getDomain } from '~lib/util';
 import { POPUP_KEY } from '~constants/storage';
 import type { Popup as IPopup } from '~types/popup';
 
@@ -13,10 +12,8 @@ export class Popup {
     return popup ? new Popup(key, popup) : null;
   }
 
-  static async create(tabId: number, windowId: number) {
+  static async create(tabId: number, popup: IPopup) {
     const key = POPUP_KEY + tabId;
-    const domain = await getDomain(tabId);
-    const popup = { domain, windowId };
 
     await sessionStorage.set(key, popup);
     return new Popup(key, popup);

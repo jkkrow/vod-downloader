@@ -1,5 +1,5 @@
 import { parseManifest } from './parse';
-import { getFormat, chunkArray } from './util';
+import { extractFormat, chunkArray } from './util';
 import type { ParsedPlaylist, ParsedSegment } from '../types/discovery';
 
 export async function getPlaylistSegments(
@@ -14,9 +14,7 @@ export async function getPlaylistSegments(
     return playlists.map(({ segments }) => segments || 'Unknown');
   }
 
-  const format = getFormat(manifestUris[0]);
-
-  if (format === 'cmfv') {
+  if (extractFormat(manifestUris[0]) === 'cmfv') {
     // Handle cmaf formats
     return manifestUris.map((uri) => [{ uri }]);
   }

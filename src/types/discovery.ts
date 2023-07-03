@@ -1,16 +1,5 @@
 import type { Segment } from './manifest';
-import type {
-  MEDIA_FORMATS,
-  DYNAMIC_FORMATS,
-  STATIC_FORMATS,
-} from '~constants/format';
-
-export type SupportedFormat = (typeof MEDIA_FORMATS)[number];
-export type DynamicFormat = (typeof DYNAMIC_FORMATS)[number];
-export type StaticFormat = (typeof STATIC_FORMATS)[number];
-export type ItemSize = number | 'Unknown' | 'Calculating';
-export type ItemBandwidth = number | 'Unknown';
-export type ItemResolution = number | 'Unknown';
+import type { SupportedFormat } from './format';
 
 export interface DiscoveryItem {
   type: 'static' | 'segments' | 'playlists';
@@ -47,3 +36,7 @@ export type ParsedSegment = {
   duration?: number;
   range?: { start: number; end: number };
 };
+
+export type ItemSize = number | 'Unknown' | 'Calculating';
+export type ItemBandwidth = number | 'Unknown';
+export type ItemResolution = number | 'Unknown';

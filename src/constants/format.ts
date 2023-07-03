@@ -1,3 +1,5 @@
+export const DYNAMIC_FORMATS = ['m3u8', 'mpd'] as const;
+export const EXTRA_FORMATS = ['vtt', 'webvtt', 'srt'] as const;
 export const STATIC_FORMATS = [
   // video
   'mp4',
@@ -15,13 +17,11 @@ export const STATIC_FORMATS = [
   'wma',
   'wav',
   'pcm',
+  // subtitle
+  ...EXTRA_FORMATS,
 ] as const;
 
-export const DYNAMIC_FORMATS = ['m3u8', 'mpd'] as const;
-
 export const MEDIA_FORMATS = [...STATIC_FORMATS, ...DYNAMIC_FORMATS] as const;
-
-export const EXTRA_FORMATS = ['vtt', 'webvtt', 'srt'] as const;
 
 export const EXT_MAP = {
   mp4: 'video/mp4',
