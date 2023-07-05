@@ -1,6 +1,8 @@
 import { useStorage } from '@plasmohq/storage/hook';
-import { createContext, PropsWithChildren, useState } from 'react';
+import { createContext, PropsWithChildren, useState, useCallback } from 'react';
 
+import { DownloadManager } from '~jobs/DownloadManager';
+import { Downloader } from '~jobs/Downloader';
 import { sessionStorage } from '~storage/session';
 import {
   DISCOVERY_KEY,
@@ -19,7 +21,8 @@ export interface AppContextState {
   discovery: DiscoveryItem[];
   queue: DownloadQueueItem[];
   loading: boolean;
-  setMenu: (menu: AppContextState['menu']) => void;
+  setMenuHandler: (menu: AppContextState['menu']) => void;
+  downloadHandler: (item: DiscoveryItem, playlistIndex: number) => void;
 }
 
 const initialState: AppContextState = {
@@ -29,13 +32,16 @@ const initialState: AppContextState = {
   discovery: [],
   queue: [],
   loading: false,
-  setMenu: () => {},
+  setMenuHandler: () => {},
+  downloadHandler: () => {},
 };
 
 export const AppContext = createContext(initialState);
 
 export function AppContextProvider({ children }: PropsWithChildren) {
   const [menu, setMenu] = useState<AppContextState['menu']>('discovery');
+
+  const [downloadManager] = useState(new DownloadManager(4));
 
   const [tabId] = useState(
     +(new URLSearchParams(location.search).get('tabId') || '')
@@ -61,9 +67,19 @@ export function AppContextProvider({ children }: PropsWithChildren) {
     initialState.queue
   );
 
-  const setMenuHandler = (menu: AppContextState['menu']) => {
+  const setMenuHandler = useCallback((menu: AppContextState['menu']) => {
     setMenu(menu);
-  };
+  }, []);
+
+  const downloadHandler = useCallback(
+    async (item: DiscoveryItem, playlistIndex: number) => {
+      const downloader = new Downloader(tabId, item, playlistIndex);
+      await downloader.prepare();
+
+      downloadManager.enqueue(downloader);
+    },
+    [downloadManager]
+  );
 
   return (
     <AppContext.Provider
@@ -74,7 +90,8 @@ export function AppContextProvider({ children }: PropsWithChildren) {
         queue,
         loading,
         menu,
-        setMenu: setMenuHandler,
+        setMenuHandler,
+        downloadHandler,
       }}
     >
       {children}

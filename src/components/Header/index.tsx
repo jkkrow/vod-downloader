@@ -9,7 +9,7 @@ const navigations = [
 ] as const;
 
 export default function Header() {
-  const { menu, setMenu } = useContext(AppContext);
+  const { menu, setMenuHandler: setMenu } = useContext(AppContext);
 
   return (
     <header className="sticky w-full">

@@ -13,12 +13,28 @@ export class Queue {
   }
 
   async addItem(item: DownloadQueueItem) {
+    const matchedItem = this.items.find(
+      (i) => i.uri === item.uri && i.playlistIndex === item.playlistIndex
+    );
+
+    if (matchedItem) {
+      await this.removeItem({
+        uri: item.uri,
+        playlistIndex: item.playlistIndex,
+      });
+    }
+
     this.items.push(item);
     await sessionStorage.set(this.key, this.items);
   }
 
-  async updateItem(uri: string, updates: Partial<DownloadQueueItem>) {
-    const matchedItem = this.items.find((item) => item.uri === uri);
+  async updateItem(
+    id: { uri: string; playlistIndex?: number },
+    updates: Partial<DownloadQueueItem>
+  ) {
+    const matchedItem = this.items.find(
+      (i) => i.uri === id.uri && i.playlistIndex === id.playlistIndex
+    );
 
     if (!matchedItem) return;
 
@@ -29,7 +45,13 @@ export class Queue {
     await sessionStorage.set(this.key, this.items);
   }
 
-  async removeItem() {}
+  async removeItem(id: { uri: string; playlistIndex?: number }) {
+    this.items = this.items.filter(
+      (i) => !(i.uri === id.uri && i.playlistIndex === id.playlistIndex)
+    );
+
+    await sessionStorage.set(this.key, this.items);
+  }
 
   async remove() {
     this.items = [];

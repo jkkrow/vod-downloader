@@ -1,21 +1,10 @@
 import type { ParsedSegment } from './discovery';
-import type {
-  DiscoveryItem,
-  ItemSize,
-  ItemBandwidth,
-  ItemResolution,
-} from './discovery';
+import type { DiscoveryItem } from './discovery';
 
-export interface DownloadQueueItem extends DiscoveryItem {
-  name: string;
-  uri: string;
-  domain: string;
-  size?: ItemSize;
-  bandwidth?: ItemBandwidth;
-  resolution?: ItemResolution;
+export interface DownloadQueueItem extends Omit<DiscoveryItem, 'playlists'> {
   playlistIndex?: number;
-  requestHeaders: chrome.webRequest.HttpHeader[];
   progress: number;
+  error: string | null;
 }
 
 export interface MultiThreadContext {

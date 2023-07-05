@@ -1,3 +1,4 @@
+import { Queue } from '~storage/session/Queue';
 import { parseManifest } from '../lib/parse';
 import { updateHeaders } from '~lib/request-headers';
 import { DYNAMIC_FORMATS, EXT_MAP } from '~constants/format';
@@ -9,6 +10,8 @@ export class Downloader {
   private sizes: Map<number, number> = new Map();
   private segments: ParsedSegment[] = [];
   private writer: FileSystemWritableFileStream;
+  private monitor: NodeJS.Timer;
+  private queue: Queue;
   private controller = new AbortController();
   private position = 0;
   private activeThreads = 0;
@@ -32,41 +35,42 @@ export class Downloader {
     });
 
     await parsePromise;
-
-    if (!this.segments.length) {
-      throw new Error('Segment not found');
-    }
-
     const writer = await file.createWritable();
     this.writer = writer;
     this.threads = Math.min(threads || 1, 5);
     this.progress = { size: 0, current: 0, total: this.segments.length };
-    window.onbeforeunload = () => 'Downloading';
+
+    this.queue = await Queue.get(this.tabId);
+    await this.queue.addItem({
+      ...this.item,
+      playlistIndex: this.playlistIndex,
+      progress: 0,
+      error: null,
+    });
   }
 
   async download() {
     try {
-      if (!this.segments.length) return;
-      if (this.position && !this.sizes.has(this.position - 1)) return;
-
-      this.position++;
-
-      const segment = this.segments.shift()!;
-      const currentPosition = this.position - 1;
-      const next = this.downloadNextSegment();
-
-      await this.writeStream(segment, currentPosition, next);
-      await this.download();
+      this.updateProgress();
+      await this.downloadSegment();
     } catch (error) {
       this.controller.abort();
+      await this.queue.updateItem(
+        { uri: this.item.uri, playlistIndex: this.playlistIndex },
+        { error: error.message }
+      );
+    } finally {
       await this.finish();
-      throw error;
     }
   }
 
-  async finish() {
-    await this.writer.close();
-    window.onbeforeunload = null;
+  private async finish() {
+    clearInterval(this.monitor);
+    this.writer.close();
+    this.queue.updateItem(
+      { uri: this.item.uri, playlistIndex: this.playlistIndex },
+      { progress: 100 }
+    );
   }
 
   private async parse() {
@@ -97,13 +101,45 @@ export class Downloader {
     this.segments = playlistResult.segments || [];
   }
 
+  private async updateProgress() {
+    this.monitor = setInterval(() => {
+      if (this.sizes.get(0) === undefined) return;
+      const { total, current, size } = this.progress;
+      const percent =
+        total === 1
+          ? (size / (this.sizes.get(0) || Infinity)) * 100
+          : (current / total) * 100;
+
+      this.queue.updateItem(
+        { uri: this.item.uri, playlistIndex: this.playlistIndex },
+        { progress: percent }
+      );
+
+      console.log(this.queue);
+    }, 700);
+  }
+
+  private async downloadSegment() {
+    if (!this.segments.length) return;
+    if (this.position && !this.sizes.has(this.position - 1)) return;
+
+    this.position++;
+
+    const segment = this.segments.shift()!;
+    const currentPosition = this.position - 1;
+    const next = this.downloadNextSegment();
+
+    await this.writeStream(segment, currentPosition, next);
+    await this.downloadSegment();
+  }
+
   private downloadNextSegment() {
     let triggered = false;
 
     return () => {
       if (triggered) return;
       if (this.segments.length && this.getThreadCapacity()) {
-        this.download();
+        this.downloadSegment();
       }
 
       triggered = true;
