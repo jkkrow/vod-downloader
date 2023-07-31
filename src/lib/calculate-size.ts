@@ -14,8 +14,11 @@ export async function getPlaylistSegments(
     return playlists.map(({ segments }) => segments || 'Unknown');
   }
 
-  if (extractFormat(manifestUris[0]) === 'cmfv') {
-    // Handle cmaf formats
+  if (
+    extractFormat(manifestUris[0]) === 'cmfv' ||
+    extractFormat(manifestUris[0]) === 'mp4'
+  ) {
+    // Handle edge cases
     return manifestUris.map((uri) => [{ uri }]);
   }
 

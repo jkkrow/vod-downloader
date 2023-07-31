@@ -36,9 +36,9 @@ export class Discovery {
   ) {
     const matchedItem = this.items.find((item) => item.uri === uri);
 
-    if (!matchedItem || !(matchedItem as DiscoveryItem).playlists) return;
+    if (!matchedItem || !matchedItem.playlists) return;
 
-    const matchedPlaylist = (matchedItem as DiscoveryItem).playlists?.[index];
+    const matchedPlaylist = matchedItem.playlists?.[index];
 
     if (!matchedPlaylist) return;
 

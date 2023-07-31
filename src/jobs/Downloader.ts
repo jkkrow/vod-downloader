@@ -1,17 +1,18 @@
-import { Queue } from '~storage/session/Queue';
+import { DownloadQueue } from '~storage/session/DownloadQueue';
 import { parseManifest } from '../lib/parse';
 import { updateHeaders } from '~lib/request-headers';
 import { DYNAMIC_FORMATS, EXT_MAP } from '~constants/format';
 import type { DiscoveryItem } from '~types/discovery';
 import type { ParsedSegment } from '~types/discovery';
 import type { MultiThreadContext } from '~types/download';
+import { extractFormat } from '~lib/util';
 
 export class Downloader {
   private sizes: Map<number, number> = new Map();
   private segments: ParsedSegment[] = [];
   private writer: FileSystemWritableFileStream;
   private monitor: NodeJS.Timer;
-  private queue: Queue;
+  private queue: DownloadQueue;
   private controller = new AbortController();
   private position = 0;
   private activeThreads = 0;
@@ -40,10 +41,19 @@ export class Downloader {
     this.threads = Math.min(threads || 1, 5);
     this.progress = { size: 0, current: 0, total: this.segments.length };
 
-    this.queue = await Queue.get(this.tabId);
+    this.queue = await DownloadQueue.get(this.tabId);
     await this.queue.addItem({
       ...this.item,
       playlistIndex: this.playlistIndex,
+      size: this.item.playlists
+        ? this.item.playlists[this.playlistIndex!].size
+        : this.item.size,
+      bandwidth: this.item.playlists
+        ? this.item.playlists[this.playlistIndex!].bandwidth
+        : undefined,
+      resolution: this.item.playlists
+        ? this.item.playlists[this.playlistIndex!].resolution
+        : undefined,
       progress: 0,
       error: null,
     });
@@ -53,24 +63,26 @@ export class Downloader {
     try {
       this.updateProgress();
       await this.downloadSegment();
+      await this.finish(true);
     } catch (error) {
       this.controller.abort();
       await this.queue.updateItem(
         { uri: this.item.uri, playlistIndex: this.playlistIndex },
         { error: error.message }
       );
-    } finally {
-      await this.finish();
+      await this.finish(false);
+      throw error;
     }
   }
 
-  private async finish() {
+  private async finish(success: boolean) {
     clearInterval(this.monitor);
     this.writer.close();
-    this.queue.updateItem(
-      { uri: this.item.uri, playlistIndex: this.playlistIndex },
-      { progress: 100 }
-    );
+    success &&
+      this.queue.updateItem(
+        { uri: this.item.uri, playlistIndex: this.playlistIndex },
+        { progress: 100 }
+      );
   }
 
   private async parse() {
@@ -97,25 +109,25 @@ export class Downloader {
       return;
     }
 
+    if (
+      extractFormat(playlist.uri) === 'cmfv' ||
+      extractFormat(playlist.uri) === 'mp4'
+    ) {
+      this.segments = [{ uri: playlist.uri }];
+      return;
+    }
+
     const playlistResult = await parseManifest(playlist.uri);
     this.segments = playlistResult.segments || [];
   }
 
   private async updateProgress() {
     this.monitor = setInterval(() => {
-      if (this.sizes.get(0) === undefined) return;
-      const { total, current, size } = this.progress;
-      const percent =
-        total === 1
-          ? (size / (this.sizes.get(0) || Infinity)) * 100
-          : (current / total) * 100;
-
+      const percent = this.getProgress();
       this.queue.updateItem(
         { uri: this.item.uri, playlistIndex: this.playlistIndex },
         { progress: percent }
       );
-
-      console.log(this.queue);
     }, 700);
   }
 
@@ -164,72 +176,78 @@ export class Downloader {
     }
 
     this.activeThreads++;
-    const response = await fetch(request);
+    try {
+      const response = await fetch(request);
 
-    if (!response.ok || !response.body) {
-      throw new Error('Download failed with status ' + response.status);
-    }
-
-    if (segment.range && response.status !== 206) {
-      throw new Error('Server does not support range');
-    }
-
-    const size = +(response.headers.get('Content-Length') || 0);
-    const type = response.headers.get('Accept-Ranges');
-
-    const writableStream = this.getWritableStream(segment, position);
-    const monitorStream = this.getMonitorStream(position);
-    const limitStream = this.getLimitStream(this.threadSize);
-
-    const recordSize = !!size && !this.sizes.has(position);
-    const useMultiThread = !!size && type === 'bytes' && size > this.threadSize;
-
-    if (recordSize) {
-      this.sizes.set(position, size);
-    }
-
-    if (!useMultiThread) {
-      next?.();
-      return response.body
-        .pipeThrough(monitorStream)
-        .pipeTo(writableStream)
-        .then(() => {
-          this.activeThreads--;
-        });
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      const context: MultiThreadContext = {
-        segment,
-        position,
-        start: segment.range?.start || 0,
-        end: segment.range?.end || size - 1,
-        actives: 1,
-        ranges: [],
-        next,
-        resolve,
-        reject,
-      };
-
-      while (true) {
-        context.start += this.threadSize;
-        if (context.start >= (segment.range?.end || size)) break;
-        context.ranges.push(context.start);
+      if (!response.ok || !response.body) {
+        throw new Error('Download failed with status ' + response.status);
       }
 
-      response
-        .body!.pipeThrough(limitStream)
-        .pipeThrough(monitorStream)
-        .pipeTo(writableStream)
-        .then(() => {
-          context.actives--;
-          this.activeThreads--;
-          this.multiThreadStream(context);
-        })
-        .catch(context.reject);
+      if (segment.range && response.status !== 206) {
+        throw new Error('Server does not support range');
+      }
 
-      this.multiThreadStream(context);
-    });
+      const size = +(response.headers.get('Content-Length') || 0);
+      const type = response.headers.get('Accept-Ranges');
+
+      const writableStream = this.getWritableStream(segment, position);
+      const monitorStream = this.getMonitorStream(position);
+      const limitStream = this.getLimitStream(this.threadSize);
+
+      const recordSize = !!size && !this.sizes.has(position);
+      const useMultiThread =
+        !!size && type === 'bytes' && size > this.threadSize;
+
+      if (recordSize) {
+        this.sizes.set(position, size);
+      }
+
+      if (!useMultiThread) {
+        next?.();
+        return response.body
+          .pipeThrough(monitorStream)
+          .pipeTo(writableStream)
+          .then(() => {
+            this.activeThreads--;
+          });
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const context: MultiThreadContext = {
+          segment,
+          position,
+          start: segment.range?.start || 0,
+          end: segment.range?.end || size - 1,
+          actives: 1,
+          ranges: [],
+          next,
+          resolve,
+          reject,
+        };
+
+        while (true) {
+          context.start += this.threadSize;
+          if (context.start >= (segment.range?.end || size)) break;
+          context.ranges.push(context.start);
+        }
+
+        response
+          .body!.pipeThrough(limitStream)
+          .pipeThrough(monitorStream)
+          .pipeTo(writableStream)
+          .then(() => {
+            context.actives--;
+            this.activeThreads--;
+            this.multiThreadStream(context);
+          })
+          .catch(context.reject);
+
+        this.multiThreadStream(context);
+      });
+    } catch (error) {
+      this.activeThreads--;
+      throw error;
+    }
   }
 
   private multiThreadStream(context: MultiThreadContext) {
@@ -252,7 +270,12 @@ export class Downloader {
         .catch(context.reject);
     }
 
-    if (context.actives === 0 && context.ranges.length === 0) {
+    const percent = this.getProgress();
+
+    if (
+      percent >= 100 ||
+      (context.actives === 0 && context.ranges.length === 0)
+    ) {
       context.resolve();
     }
 
@@ -335,5 +358,16 @@ export class Downloader {
     const isDynamicFormat = DYNAMIC_FORMATS.includes(this.item.format as any);
 
     return isDynamicFormat ? { 'video/mp4': ['.mp4'] } : { [mime]: [ext] };
+  }
+
+  private getProgress() {
+    if (this.sizes.get(0) === undefined) return 0;
+    const { total, current, size } = this.progress;
+    const percent =
+      total === 1
+        ? (size / (this.sizes.get(0) || Infinity)) * 100
+        : (current / total) * 100;
+
+    return percent;
   }
 }

@@ -23,25 +23,25 @@ export class DownloadManager {
       return;
     }
 
-    if (this.queue.length === 0 && this.actives === 0) {
-      await this.finish();
+    if (!this.queue.length) {
+      !this.actives && this.finish();
       return;
     }
 
     this.actives++;
     const downloadPromise = this.queue.shift()!;
 
-    downloadPromise().then(() => {
+    downloadPromise().finally(() => {
       this.actives--;
       this.processQueue();
     });
   }
 
-  private async start() {
+  private start() {
     window.onbeforeunload = () => 'Downloading';
   }
 
-  private async finish() {
+  private finish() {
     window.onbeforeunload = null;
   }
 }

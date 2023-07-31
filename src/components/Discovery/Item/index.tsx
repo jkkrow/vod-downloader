@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 
 import Format from './Format';
 import Button from './Button';
@@ -10,11 +10,11 @@ interface DiscoveryItemProps {
   item: IDiscoveryItem;
 }
 
-export default function DiscoveryItem({ item }: DiscoveryItemProps) {
+function DiscoveryItem({ item }: DiscoveryItemProps) {
   const [selectedPlaylistIndex, setSelectedPlaylistIndex] = useState(0);
 
   return (
-    <div className="flex flex-col py-6 mx-2 gap-4 border-b-[1px] border-primary last:border-b-0">
+    <li className="flex flex-col py-6 mx-2 gap-4 border-b-[1px] border-primary last:border-b-0">
       <div className="flex items-center gap-6">
         <Format format={item.format} />
         <div className="flex flex-col gap-1 justify-center">
@@ -35,6 +35,8 @@ export default function DiscoveryItem({ item }: DiscoveryItemProps) {
           onSelect={setSelectedPlaylistIndex}
         />
       ) : null}
-    </div>
+    </li>
   );
 }
+
+export default memo(DiscoveryItem);

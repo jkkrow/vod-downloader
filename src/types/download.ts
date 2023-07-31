@@ -1,8 +1,16 @@
-import type { ParsedSegment } from './discovery';
-import type { DiscoveryItem } from './discovery';
+import type {
+  DiscoveryItem,
+  ParsedSegment,
+  ItemSize,
+  ItemBandwidth,
+  ItemResolution,
+} from './discovery';
 
 export interface DownloadQueueItem extends Omit<DiscoveryItem, 'playlists'> {
   playlistIndex?: number;
+  size?: ItemSize;
+  bandwidth?: ItemBandwidth;
+  resolution?: ItemResolution;
   progress: number;
   error: string | null;
 }
